@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Gastos Fijos NFGM — Control de gastos personales y tarjetas">
+<link rel="canonical" href="https://nicolasfgm.github.io/nfgm">
+<title>Gastos Fijos NFGM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F5F0;--surface:#fff;--surface2:#F0EDE6;--border:#E2DDD5;
+  --text:#1A1814;--text-muted:#7A756C;
+  --accent:#2D5016;--accent-light:#E8F0DE;--accent-mid:#5A8A30;
+  --danger:#C0392B;--danger-light:#FDECEA;
+  --warn:#D4850A;--warn-light:#FEF3E2;
+  --info:#1A5276;--info-light:#EBF5FB;
+  --bci:#1A4E8F;--bci-light:#E8EFF9;
+  --radius:12px;--rsm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.04);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#121210;--surface:#1E1D1A;--surface2:#2A2926;--border:#3A3835;
+  --text:#F0EDE6;--text-muted:#9A9690;
+  --accent:#7ABF44;--accent-light:#1E2D12;--accent-mid:#5A8A30;
+  --danger:#E74C3C;--danger-light:#2D1210;
+  --warn:#F39C12;--warn-light:#2D1F08;
+  --info:#5DADE2;--info-light:#0D1F2D;
+  --bci:#5DADE2;--bci-light:#0D1F2D;
+}}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:'DM Serif Display',serif;font-size:1.3rem;color:var(--text);letter-spacing:-.02em;}
+.logo span{color:var(--accent-mid);}
+.header-right{display:flex;align-items:center;gap:.75rem;}
+.header-meta{font-size:12px;color:var(--text-muted);}
+.nav-tabs{display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:var(--rsm);}
+.nav-tab{padding:5px 11px;border:none;background:transparent;border-radius:5px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap;}
+.nav-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.page{display:none;}.page.active{display:flex;min-height:calc(100vh - 60px);}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.25rem;width:320px;min-width:260px;overflow-y:auto;display:flex;flex-direction:column;gap:1rem;}
+.section-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem;}
+.tabs{display:flex;gap:3px;background:var(--surface2);padding:3px;border-radius:var(--rsm);}
+.tab-btn{flex:1;padding:5px 3px;border:none;background:transparent;border-radius:5px;font-size:11px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.tab-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+label{font-size:11px;font-weight:500;color:var(--text-muted);}
+input[type="text"],input[type="number"],input[type="date"],select,textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent-mid);}
+.btn{width:100%;padding:8px 12px;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{opacity:.9;}
+.btn-sm{padding:4px 10px;font-size:11px;width:auto;border-radius:5px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.btn-danger{background:transparent;border:1px solid var(--border);color:var(--danger);padding:3px 7px;font-size:11px;width:auto;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-danger:hover{background:var(--danger-light);}
+.btn-edit{background:transparent;border:1px solid var(--border);color:var(--info);padding:3px 7px;font-size:12px;width:auto;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-edit:hover{background:var(--info-light);}
+.btn-save{background:var(--accent);border:none;color:#fff;padding:4px 12px;font-size:12px;width:auto;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.btn-cancel{background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;font-size:12px;width:auto;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.items-list{display:flex;flex-direction:column;gap:4px;}
+.item-row{display:flex;align-items:center;padding:6px 8px;background:var(--surface2);border-radius:var(--rsm);font-size:12px;gap:5px;}
+.item-name{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-amount{font-weight:600;color:var(--danger);white-space:nowrap;font-size:11px;}
+.item-cat{font-size:10px;color:var(--text-muted);background:var(--surface);padding:1px 5px;border-radius:3px;white-space:nowrap;}
+.empty-state{text-align:center;padding:1.25rem;color:var(--text-muted);font-size:12px;}
+.divider{border:none;border-top:1px solid var(--border);margin:0;}
+.main{padding:1.75rem;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:1.25rem;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow);}
+.kpi-label{font-size:11px;color:var(--text-muted);font-weight:500;margin-bottom:4px;}
+.kpi-value{font-size:22px;font-weight:600;line-height:1.1;letter-spacing:-.03em;}
+.kpi-value.danger{color:var(--danger);}.kpi-value.safe{color:var(--accent-mid);}.kpi-value.warning{color:var(--warn);}
+.kpi-sub{font-size:10px;color:var(--text-muted);margin-top:2px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow);}
+.chart-title{font-family:'DM Serif Display',serif;font-size:1rem;margin-bottom:.75rem;color:var(--text);}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;}
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+.table-header{padding:.8rem 1.25rem;border-bottom:1px solid var(--border);font-family:'DM Serif Display',serif;font-size:1rem;display:flex;align-items:center;justify-content:space-between;}
+table{width:100%;border-collapse:collapse;}
+th{background:var(--surface2);padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:left;}
+td{padding:7px 12px;font-size:12px;border-bottom:1px solid var(--border);color:var(--text);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.td-red{color:var(--danger);font-weight:600;}.td-green{color:var(--accent-mid);font-weight:600;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);}
+.legend-dot{width:9px;height:9px;border-radius:2px;}
+.alert{padding:8px 12px;border-radius:var(--rsm);font-size:12px;border:1px solid;margin-bottom:4px;}
+.alert-warning{background:var(--warn-light);border-color:var(--warn);color:var(--warn);}
+.alert-danger{background:var(--danger-light);border-color:var(--danger);color:var(--danger);}
+.alert-info{background:var(--info-light);border-color:var(--info);color:var(--info);}
+.period-selector{display:flex;gap:3px;}
+.period-btn{padding:3px 10px;border:1px solid var(--border);border-radius:5px;background:transparent;font-size:11px;font-weight:500;color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.period-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;}
+/* tarjetas sidebar */
+.card-block{background:var(--surface2);border-radius:var(--rsm);padding:9px 10px;margin-bottom:6px;border:1px solid var(--border);}
+.card-block-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.card-block-name{font-size:12px;font-weight:600;}
+.card-block-total{font-size:11px;color:var(--danger);font-weight:600;}
+.mov-list{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;}
+.mov-row{display:flex;align-items:center;padding:4px 7px;background:var(--surface);border-radius:5px;font-size:11px;gap:4px;}
+.mov-desc{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mov-amt{font-weight:600;color:var(--danger);white-space:nowrap;}
+.tc-panel{background:var(--surface2);border-radius:var(--rsm);padding:9px;margin-bottom:7px;}
+.tc-panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:7px;}
+/* badges */
+.badge-resp{display:inline-block;font-size:10px;padding:2px 6px;border-radius:9px;font-weight:600;}
+.badge-new{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#FEF3E2;color:#D4850A;margin-left:4px;vertical-align:middle;}
+.badge-upd{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#EBF5FB;color:#1A5276;margin-left:4px;vertical-align:middle;}
+.badge-done{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--surface2);color:var(--text-muted);margin-left:4px;vertical-align:middle;}
+.import-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;}
+.bci-badge{background:var(--bci-light);color:var(--bci);}
+/* card page */
+.card-page{padding:1.75rem;flex:1;width:100%;}
+.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.9rem;align-items:center;}
+.filter-btn{padding:4px 11px;border:1px solid var(--border);border-radius:18px;background:transparent;font-size:11px;font-weight:500;color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+/* inline edit */
+.edit-row td{background:var(--accent-light)!important;vertical-align:top;padding:9px 12px;}
+.field-hint{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:3px;}
+.banco-ref{font-size:10px;font-family:monospace;color:var(--text-muted);background:var(--surface2);padding:2px 6px;border-radius:3px;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.edit-actions{display:flex;gap:5px;align-items:center;padding-top:16px;}
+.concepto-val{color:var(--accent-mid);font-weight:500;font-style:italic;}
+.row-new td{background:rgba(212,133,10,.05)!important;}
+.row-upd td{background:rgba(26,82,118,.05)!important;}
+.row-done td{opacity:.45;}
+/* division pills */
+.div-pills{display:flex;flex-wrap:wrap;gap:3px;}
+.div-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;white-space:nowrap;}
+.div-pill .pct{opacity:.8;}
+/* division editor */
+.div-editor{background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:10px;margin-top:6px;}
+.div-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.div-row select{flex:1;font-size:12px;padding:5px 7px;}
+.div-row input[type="number"]{width:70px;font-size:12px;padding:5px 7px;}
+.div-row .pct-label{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.div-row .monto-calc{font-size:11px;color:var(--danger);font-weight:600;white-space:nowrap;min-width:70px;}
+.div-total-row{display:flex;justify-content:space-between;align-items:center;padding-top:5px;border-top:1px solid var(--border);margin-top:3px;font-size:11px;}
+.div-total-ok{color:var(--accent-mid);font-weight:700;}
+.div-total-warn{color:var(--warn);font-weight:700;}
+.div-total-err{color:var(--danger);font-weight:700;}
+/* drop zone */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--rsm);padding:1rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);margin-bottom:.8rem;}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent-mid);background:var(--accent-light);}
+.drop-zone input{display:none;}
+.drop-text{font-size:12px;color:var(--text-muted);}
+/* bci drop zone */
+.drop-zone.bci{border-color:var(--bci);}
+.drop-zone.bci:hover,.drop-zone.bci.dragover{border-color:var(--bci);background:var(--bci-light);}
+/* resp page */
+.resp-page{padding:1.75rem;flex:1;width:100%;}
+.resp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:.8rem;}
+.resp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;}
+.resp-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex-shrink:0;}
+.resp-info{flex:1;}.resp-name{font-weight:500;font-size:13px;}.resp-count{font-size:11px;color:var(--text-muted);}
+.color-picker{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.color-opt{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.color-opt.selected{border-color:var(--text);transform:scale(1.15);}
+/* ── LOGIN ── */
+.pin-dot{width:40px;height:40px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .2s;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;color:transparent;}
+.pin-dot.filled{background:var(--accent-light);border-color:var(--accent-mid);color:var(--accent-mid);}
+.pin-dot.filled::after{content:'✱';}
+.pin-dot.error{background:var(--danger-light);border-color:var(--danger);color:var(--danger);}
+.pin-dot.error::after{content:'✱';}
+.pin-key{width:64px;height:56px;font-size:20px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--rsm);background:var(--surface2);color:var(--text);cursor:pointer;transition:all .1s;display:flex;align-items:center;justify-content:center;}
+.pin-key:hover{background:var(--border);}
+.pin-key:active{transform:scale(.92);background:var(--accent-mid);color:#fff;}
+.pin-key-back{background:transparent;font-size:22px;}
+@media(max-width:900px){.page.active{flex-direction:column;}.sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);}.chart-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<!-- ══════════════════════════════════════════════
+     PANTALLA DE LOGIN
+══════════════════════════════════════════════ -->
+<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem 2rem;width:340px;box-shadow:var(--shadow);text-align:center;">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;margin-bottom:.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:2rem;">Identifícate para continuar</div>
+
+    <!-- Paso 1: seleccionar nombre -->
+    <div id="loginStep1">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-align:left;margin-bottom:6px;">¿Quién eres?</div>
+      <select id="loginNameSelect" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-bottom:1rem;">
+        <option value="">— Selecciona tu nombre —</option>
+      </select>
+      <button onclick="loginConfirmName()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Continuar →</button>
+    </div>
+
+    <!-- Paso 2: PIN -->
+    <div id="loginStep2" style="display:none;">
+      <div style="margin-bottom:1.25rem;">
+        <div id="loginWhoLabel" style="font-size:15px;font-weight:600;margin-bottom:.25rem;"></div>
+        <div style="font-size:12px;color:var(--text-muted);">Ingresa tu PIN de 4 dígitos</div>
+      </div>
+
+      <!-- Input oculto que recibe el teclado físico -->
+      <input type="password" id="pinRealInput" inputmode="numeric" maxlength="4"
+        style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;"
+        oninput="onPinInput(this.value)" onkeydown="onPinKeydown(event)">
+
+      <!-- Dots + flecha acceder en la misma fila -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1.75rem;">
+        <div id="pinDisplay" onclick="focusPinInput()"
+          style="display:flex;gap:10px;cursor:pointer;padding:6px 4px;">
+          <div class="pin-dot" id="dot0"></div>
+          <div class="pin-dot" id="dot1"></div>
+          <div class="pin-dot" id="dot2"></div>
+          <div class="pin-dot" id="dot3"></div>
+        </div>
+        <!-- Flecha Acceder — sólo activa con 4 dígitos -->
+        <button id="pinOKBtn" onclick="pinOK()" disabled
+          style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:20px;cursor:not-allowed;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          →
+        </button>
+      </div>
+
+      <!-- Teclado numérico: 4 filas x 3 columnas, cuadrados simétricos -->
+      <div style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(4,56px);gap:8px;justify-content:center;margin-bottom:1.25rem;">
+        <button class="pin-key" onclick="pinKey('1')">1</button>
+        <button class="pin-key" onclick="pinKey('2')">2</button>
+        <button class="pin-key" onclick="pinKey('3')">3</button>
+        <button class="pin-key" onclick="pinKey('4')">4</button>
+        <button class="pin-key" onclick="pinKey('5')">5</button>
+        <button class="pin-key" onclick="pinKey('6')">6</button>
+        <button class="pin-key" onclick="pinKey('7')">7</button>
+        <button class="pin-key" onclick="pinKey('8')">8</button>
+        <button class="pin-key" onclick="pinKey('9')">9</button>
+        <button class="pin-key pin-key-back" onclick="pinBack()">⌫</button>
+        <button class="pin-key" onclick="pinKey('0')">0</button>
+        <div></div><!-- celda vacía para simetría -->
+      </div>
+
+      <div id="pinError" style="color:var(--danger);font-size:12px;min-height:18px;text-align:center;"></div>
+      <button onclick="loginBack()" style="margin-top:.6rem;background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline;">← Cambiar usuario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VISTA RESPONSABLE (no-admin) ══ -->
+<div id="respView" style="display:none;min-height:100vh;">
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <span id="respViewName" style="font-size:13px;font-weight:600;"></span>
+      <button onclick="logout()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;cursor:pointer;">Cerrar sesión</button>
+    </div>
+  </div>
+  <div style="padding:2rem;max-width:900px;margin:0 auto;">
+    <div id="respViewKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1.5rem;"></div>
+    <div class="table-card">
+      <div class="table-header">Mis movimientos</div>
+      <div style="overflow-x:auto;">
+        <table><thead><tr>
+          <th>Fecha</th><th>Concepto</th><th>Tarjeta</th>
+          <th>Cuotas pend.</th><th>Mi cuota/mes</th><th>Mi %</th>
+        </tr></thead>
+        <tbody id="respViewTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">Gastos Fijos <span>NFGM</span></div>
+  <div class="header-right">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('dashboard',this)">Dashboard</button>
+      <button class="nav-tab" onclick="showPage('cmr',this)">CMR Falabella</button>
+      <button class="nav-tab" onclick="showPage('bci',this)">BCI Visa</button>
+      <button class="nav-tab" onclick="showPage('responsables',this)">Responsables</button>
+    </nav>
+    <div class="header-meta" id="headerDate"></div>
+  </div>
+</header>
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div class="page active" id="page-dashboard">
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">💰 Ingreso mensual</div>
+      <div class="form-group"><label>Ingreso neto (CLP)</label><input type="number" id="ingresoInput" value="1800000"></div>
+      <button class="btn btn-primary" onclick="setIngreso()">Actualizar ingreso</button>
+    </div>
+    <hr class="divider">
+    <div>
+      <div class="section-label">➕ Agregar gasto fijo / eventual</div>
+      <div class="tabs" style="margin-bottom:.8rem;">
+        <button class="tab-btn active" onclick="switchTab('fijo',this)">Fijo</button>
+        <button class="tab-btn" onclick="switchTab('eventual',this)">Eventual</button>
+      </div>
+      <div id="tab-fijo">
+        <div class="form-group"><label>Nombre</label><input type="text" id="fijo-nombre" placeholder="Ej: Arriendo"></div>
+        <div class="form-group"><label>Monto mensual (CLP)</label><input type="number" id="fijo-monto"></div>
+        <div class="form-group"><label>Categoría</label>
+          <select id="fijo-cat"><option>Vivienda</option><option>Alimentación</option><option>Transporte</option><option>Salud</option><option>Educación</option><option>Entretenimiento</option><option>Servicios</option><option>Suscripciones</option><option>Otro</option></select>
+        </div>
+        <div class="form-group"><label>Responsable</label><select id="fijo-resp"><option value="">— Sin asignar —</option></select></div>
+        <button class="btn btn-primary" onclick="addGasto('fijo')">+ Agregar gasto fijo</button>
+      </div>
+      <div id="tab-eventual" style="display:none;">
+        <div class="form-group"><label>Descripción</label><input type="text" id="ev-nombre" placeholder="Ej: Vacaciones"></div>
+        <div class="form-group"><label>Monto total (CLP)</label><input type="number" id="ev-monto"></div>
+        <div class="form-group"><label>¿En qué mes?</label>
+          <select id="ev-mes"><option value="0">Mes 1 (Actual)</option><option value="1">Mes 2</option><option value="2">Mes 3</option><option value="3">Mes 4</option><option value="4">Mes 5</option><option value="5">Mes 6</option></select>
+        </div>
+        <div class="form-group"><label>Responsable</label><select id="ev-resp"><option value="">— Sin asignar —</option></select></div>
+        <button class="btn btn-primary" onclick="addGasto('eventual')">+ Agregar eventual</button>
+      </div>
+    </div>
+    <hr class="divider">
+    <div>
+      <div class="section-label">📋 Gastos registrados</div>
+      <div class="items-list" id="gastosList"><div class="empty-state">Sin gastos aún.</div></div>
+    </div>
+  </aside>
+  <main class="main">
+    <div id="alertZone"></div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Ingreso mensual</div><div class="kpi-value safe" id="kpiIngreso">$0</div><div class="kpi-sub">Neto disponible</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total gastos (mes 1)</div><div class="kpi-value danger" id="kpiGastos">$0</div><div class="kpi-sub">Fijos + tarjetas + eventuales</div></div>
+      <div class="kpi-card"><div class="kpi-label">Balance mensual</div><div class="kpi-value" id="kpiBalance">$0</div><div class="kpi-sub" id="kpiBalanceSub">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">% comprometido</div><div class="kpi-value" id="kpiPct">0%</div><div class="kpi-sub">Recomendado &lt; 80%</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Por categoría</div>
+        <div class="legend" id="pieLegend"></div>
+        <div style="position:relative;height:200px;"><canvas id="pieChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Ingreso vs Gastos</div>
+        <div style="position:relative;height:240px;"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title" style="margin-bottom:0;">Proyección mensual</div>
+        <div class="period-selector">
+          <button class="period-btn active" onclick="updatePeriod(6,this)">6m</button>
+          <button class="period-btn" onclick="updatePeriod(12,this)">12m</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#5A8A30;"></span>Ingreso</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#C0392B;"></span>Gastos</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#1A5276;"></span>Ahorro</span>
+      </div>
+      <div style="position:relative;height:250px;"><canvas id="lineChart"></canvas></div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">Detalle proyección</div>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Mes</th><th>Ingreso</th><th>G. Fijos</th><th>CMR</th><th>BCI</th><th>Eventuales</th><th>Total</th><th>Ahorro</th></tr></thead><tbody id="projTbody"></tbody></table></div>
+    </div>
+  </main>
+</div>
+
+<!-- ══════════ CMR PAGE ══════════ -->
+<div class="page" id="page-cmr">
+  <div class="card-page">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.25rem;flex-wrap:wrap;">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:1.5rem;">CMR Falabella</h2>
+      <span class="import-badge">✓ Importado desde Excel</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:.9rem;">Clave interna: <code style="font-size:10px;background:var(--surface2);padding:1px 5px;border-radius:3px;">fecha|descripción|monto</code> — conceptos, responsables y divisiones se preservan al reimportar.</p>
+    <label class="drop-zone" for="cmrXlsx" id="cmrDropZone">
+      <div style="font-size:1.3rem;margin-bottom:3px;">📂</div>
+      <div class="drop-text"><strong>Subir nuevos movimientos CMR</strong> (.xlsx)<br><span style="font-size:10px;">Filas nuevas se agregan; anotaciones existentes se conservan</span></div>
+      <input type="file" id="cmrXlsx" accept=".xlsx,.xls">
+    </label>
+    <div id="cmrImportStatus" style="font-size:11px;color:var(--accent-mid);margin-bottom:.7rem;min-height:16px;"></div>
+    <div class="kpi-grid" style="margin-bottom:1.25rem;">
+      <div class="kpi-card"><div class="kpi-label">Cuota mensual activa</div><div class="kpi-value danger" id="cmrKpiCuota">$0</div><div class="kpi-sub" id="cmrKpiCuotaSub">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin concepto</div><div class="kpi-value warning" id="cmrKpiSinConc">0</div><div class="kpi-sub">por identificar</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin responsable/división</div><div class="kpi-value warning" id="cmrKpiSinResp">0</div><div class="kpi-sub">cuotas sin asignar</div></div>
+      <div class="kpi-card"><div class="kpi-label">Mayor cuota</div><div class="kpi-value danger" id="cmrKpiMax">$0</div><div class="kpi-sub" id="cmrKpiMaxSub">—</div></div>
+    </div>
+    <div class="filter-row">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted);">Ver:</span>
+      <button class="filter-btn active" onclick="filterCard('cmr','todos',this)">Todos</button>
+      <button class="filter-btn" onclick="filterCard('cmr','cuotas',this)">Cuotas activas</button>
+      <button class="filter-btn" onclick="filterCard('cmr','contado',this)">Contado</button>
+      <button class="filter-btn" onclick="filterCard('cmr','sin-conc',this)">Sin concepto</button>
+      <button class="filter-btn" onclick="filterCard('cmr','sin-resp',this)">Sin responsable</button>
+      <button class="filter-btn" onclick="filterCard('cmr','nuevos',this)">Nuevos/actualizados</button>
+      <button class="filter-btn" onclick="filterCard('cmr','periodo',this)">Período actual (≤día 19)</button>
+    </div>
+    <div class="table-card" style="margin-bottom:1.25rem;">
+      <div class="table-header"><span>Movimientos CMR</span><span style="font-size:11px;color:var(--text-muted);" id="cmrMovCount"></span></div>
+      <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
+        <table><thead><tr><th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th><th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th><th>Tipo</th><th></th></tr></thead>
+        <tbody id="cmrTbody"></tbody></table>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><div class="chart-title">Top 10 por cuota</div><div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">🟢 con responsable · 🔴 sin responsable</div><div style="position:relative;height:280px;"><canvas id="cmrTopChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Carga próximos 12 meses</div><div style="position:relative;height:280px;"><canvas id="cmrCargaChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ BCI PAGE ══════════ -->
+<div class="page" id="page-bci">
+  <div class="card-page">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:.25rem;flex-wrap:wrap;">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:1.5rem;">BCI Visa</h2>
+      <span class="import-badge bci-badge">Importación Excel + manual</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:.9rem;">Misma clave estable que CMR. Agrega movimientos vía Excel o manualmente.</p>
+    <!-- IMPORT -->
+    <label class="drop-zone bci" for="bciXlsx" id="bciDropZone">
+      <div style="font-size:1.3rem;margin-bottom:3px;">📂</div>
+      <div class="drop-text"><strong>Subir movimientos BCI Visa</strong> (.xlsx)<br><span style="font-size:10px;">Misma lógica que CMR — anotaciones se preservan al reimportar</span></div>
+      <input type="file" id="bciXlsx" accept=".xlsx,.xls">
+    </label>
+    <div id="bciImportStatus" style="font-size:11px;color:var(--bci);margin-bottom:.7rem;min-height:16px;"></div>
+    <!-- AGREGAR MANUAL -->
+    <details style="margin-bottom:.9rem;">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);padding:6px 0;">➕ Agregar movimiento manual</summary>
+      <div style="background:var(--surface2);border-radius:var(--rsm);padding:10px;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="form-group" style="margin-bottom:0;"><label>Fecha</label><input type="date" id="bci-fecha"></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Descripción</label><input type="text" id="bci-desc" placeholder="Ej: LIDER NOS"></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Monto total (CLP)</label><input type="number" id="bci-monto"></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Cuotas pendientes</label><input type="number" id="bci-cuotas" value="0" min="0"></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Cuota mensual</label><input type="number" id="bci-valcuota" placeholder="Auto si cuotas=0"></div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn btn-primary" style="font-size:12px;padding:7px;" onclick="addBCIManual()">+ Agregar</button>
+        </div>
+      </div>
+    </details>
+    <div class="kpi-grid" style="margin-bottom:1.25rem;">
+      <div class="kpi-card"><div class="kpi-label">Cuota mensual activa</div><div class="kpi-value danger" id="bciKpiCuota">$0</div><div class="kpi-sub" id="bciKpiCuotaSub">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin concepto</div><div class="kpi-value warning" id="bciKpiSinConc">0</div><div class="kpi-sub">por identificar</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin responsable/división</div><div class="kpi-value warning" id="bciKpiSinResp">0</div><div class="kpi-sub">cuotas sin asignar</div></div>
+      <div class="kpi-card"><div class="kpi-label">Mayor cuota</div><div class="kpi-value danger" id="bciKpiMax">$0</div><div class="kpi-sub" id="bciKpiMaxSub">—</div></div>
+    </div>
+    <div class="filter-row">
+      <span style="font-size:11px;font-weight:600;color:var(--text-muted);">Ver:</span>
+      <button class="filter-btn active" onclick="filterCard('bci','todos',this)">Todos</button>
+      <button class="filter-btn" onclick="filterCard('bci','cuotas',this)">Cuotas activas</button>
+      <button class="filter-btn" onclick="filterCard('bci','contado',this)">Contado</button>
+      <button class="filter-btn" onclick="filterCard('bci','sin-conc',this)">Sin concepto</button>
+      <button class="filter-btn" onclick="filterCard('bci','sin-resp',this)">Sin responsable</button>
+      <button class="filter-btn" onclick="filterCard('bci','nuevos',this)">Nuevos/actualizados</button>
+      <button class="filter-btn" onclick="filterCard('bci','periodo',this)">Período actual (28→27)</button>
+    </div>
+    <div class="table-card" style="margin-bottom:1.25rem;">
+      <div class="table-header"><span>Movimientos BCI Visa</span><span style="font-size:11px;color:var(--text-muted);" id="bciMovCount"></span></div>
+      <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
+        <table><thead><tr><th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th><th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th><th>Tipo</th><th></th></tr></thead>
+        <tbody id="bciTbody"></tbody></table>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card"><div class="chart-title">Top 10 por cuota</div><div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">🟢 con responsable · 🔴 sin responsable</div><div style="position:relative;height:280px;"><canvas id="bciTopChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Carga próximos 12 meses</div><div style="position:relative;height:280px;"><canvas id="bciCargaChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ RESPONSABLES ══════════ -->
+<div class="page" id="page-responsables">
+  <div class="resp-page">
+    <h2 style="font-family:'DM Serif Display',serif;font-size:1.5rem;margin-bottom:.25rem;">Responsables</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:1.25rem;">Gestiona las personas que participan en los gastos.</p>
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:1.5rem;align-items:start;">
+      <div class="chart-card">
+        <div class="chart-title">Agregar responsable</div>
+        <div class="form-group"><label>Nombre completo</label><input type="text" id="resp-nombre" placeholder="Ej: Fernanda García"></div>
+        <div class="form-group"><label>Iniciales (2–3 letras)</label><input type="text" id="resp-iniciales" maxlength="3" placeholder="FG"></div>
+        <div class="form-group"><label>Color</label><div class="color-picker" id="colorPicker"></div></div>
+        <button class="btn btn-primary" onclick="addResponsable()">+ Agregar responsable</button>
+      </div>
+      <div><div class="resp-grid" id="respGrid"><div class="empty-state" style="grid-column:1/-1;">Sin responsables aún.</div></div></div>
+    </div>
+    <div class="table-card" style="margin-top:1.5rem;">
+      <div class="table-header">Desglose por responsable (mes actual)</div>
+      <div style="overflow-x:auto;">
+        <table><thead><tr><th>Responsable</th><th>G. Fijos</th><th>CMR (división)</th><th>BCI (división)</th><th>Eventuales</th><th>Total</th><th>% ingreso</th></tr></thead>
+        <tbody id="respTbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════
+let ingreso=1800000, gastos=[], responsables=[], activePeriod=6;
+const cardFilters={cmr:'todos',bci:'todos'};
+
+// ── CARD DB ──────────────────────────────────────────────
+// Cada tarjeta tiene su propio Map<key,entry>.
+// entry = { key, fecha, descBanco, monto, cuotas_pend, valor_cuota, es_cuota,
+//           concepto, divisiones, _estado }
+// divisiones = [ { respId, pct } ]   (suman ≤ 100; resto = "sin asignar")
+const CARDS = {
+  cmr: new Map(),
+  bci: new Map()
+};
+
+function cardKey(fecha,desc,monto){
+  return `${String(fecha).substring(0,10)}|${String(desc).toUpperCase().trim()}|${Math.round(Number(monto))}`;
+}
+
+function rowDomId(cardId,key){
+  return cardId+'-r-'+btoa(unescape(encodeURIComponent(key))).replace(/[^a-zA-Z0-9]/g,'').substring(0,38);
+}
+
+function mergeCARD(db,rows,markNew=false,isBCI=false){
+  let added=0,updated=0;
+  rows.forEach(r=>{
+    // Para BCI usamos la descripción normalizada como parte de la clave,
+    // así "AUFBAU PLAZA OESTE SAN NC 05-24" y "AUFBAU PLAZA OESTE 2 TASA INT." 
+    // se resuelven al mismo registro cuando el monto coincide.
+    const descForKey = isBCI ? (r.descNorm||normalizeBCIDesc(r.descBanco)) : r.descBanco;
+    const key=cardKey(r.fecha, descForKey, r.monto);
+    const ex=db.get(key);
+    if(!ex){
+      db.set(key,{key,fecha:String(r.fecha).substring(0,10),descBanco:r.descBanco,
+        monto:Number(r.monto),cuotas_pend:Number(r.cuotas_pend)||0,
+        valor_cuota:Number(r.valor_cuota)||Number(r.monto),
+        es_cuota:Number(r.cuotas_pend)>0,concepto:'',divisiones:[],abono:0,
+        _estado:markNew?'new':'normal'});
+      added++;
+    } else {
+      // Preservar concepto y divisiones del usuario.
+      // Actualizar datos bancarios.
+      const nc=Number(r.cuotas_pend)||0;
+      const changed=ex.cuotas_pend!==nc;
+      // Actualizar descripción banco si vino versión más limpia (facturada)
+      if(r.descBanco&&r.descBanco.length<ex.descBanco.length) ex.descBanco=r.descBanco;
+      ex.cuotas_pend=nc;
+      ex.valor_cuota=Number(r.valor_cuota)||Number(r.monto);
+      ex.es_cuota=nc>0;
+      if(nc===0&&!ex.es_cuota) ex._estado='done';
+      else if(changed&&markNew){ex._estado='upd';updated++;}
+    }
+  });
+  return{added,updated};
+}
+
+function cardTotalMes(cardId,mesIdx){
+  let t=0;
+  CARDS[cardId].forEach(m=>{
+    if(m.es_cuota&&m._estado!=='done'&&mesIdx<m.cuotas_pend){
+      t+=Math.max(0,m.valor_cuota-(m.abono||0));
+    }
+  });
+  return t;
+}
+
+// División: cuota mensual de un responsable en un movimiento
+function divMonto(m,respId){
+  const d=m.divisiones.find(d=>d.respId==respId);
+  return d?(m.valor_cuota*d.pct/100):0;
+}
+function divPctTotal(m){return m.divisiones.reduce((s,d)=>s+d.pct,0);}
+
+// Total cuota de un responsable en una tarjeta para un mes dado
+function cardRespMes(cardId,respId,mesIdx){
+  let t=0;
+  CARDS[cardId].forEach(m=>{
+    if(m.es_cuota&&m._estado!=='done'&&mesIdx<m.cuotas_pend) t+=divMonto(m,respId);
+  });
+  return t;
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════════════════════
+const CAT_COLORS={'Vivienda':'#C0392B','Alimentación':'#E67E22','Transporte':'#F39C12','Salud':'#27AE60','Educación':'#2980B9','Entretenimiento':'#8E44AD','Servicios':'#16A085','Suscripciones':'#D35400','CMR Falabella':'#C0392B','BCI Visa':'#1A4E8F','Eventual':'#7F8C8D','Otro':'#95A5A6'};
+const AVATAR_COLORS=['#C0392B','#E67E22','#F39C12','#27AE60','#1ABC9C','#2980B9','#8E44AD','#D35400','#16A085','#2C3E50'];
+let selectedColor=AVATAR_COLORS[0];
+function fmt(n){return '$'+Math.round(n).toLocaleString('es-CL');}
+
+// ══════════════════════════════════════════════════════════
+// IMPORT XLSX (SheetJS)
+// ══════════════════════════════════════════════════════════
+function initDropZones(){
+  setupDrop('cmrXlsx','cmrDropZone','cmr','cmrImportStatus');
+  setupDrop('bciXlsx','bciDropZone','bci','bciImportStatus');
+}
+function setupDrop(inputId,zoneId,cardId,statusId){
+  const inp=document.getElementById(inputId);
+  const zone=document.getElementById(zoneId);
+  inp.addEventListener('change',e=>handleXlsx(e.target.files[0],cardId,statusId));
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');handleXlsx(e.dataTransfer.files[0],cardId,statusId);});
+}
+// ── BCI: normalizar descripción para clave estable ──────────
+// BCI muta la descripción entre "no facturado" y "facturado":
+//   No facturado: "MP  *MERCADO LIB SAN CC 06-12"
+//   Facturado:    "MP *MERCADO LIBRE TASA INT. 0,00%"
+// Ambas se normalizan a una clave común basada en el núcleo del comercio.
+// Para BCI usamos: fecha_original | desc_normalizada | |monto|
+function normalizeBCIDesc(desc){
+  let d=String(desc).toUpperCase().trim();
+  d=d.replace(/\s+(CC|NC|CF|NF)\s+\d+-\d+/g,'');   // quitar "CC 06-12"
+  d=d.replace(/\s+\d+\s+CUOTAS?\s*$/,'');            // quitar "06 CUOTA"
+  d=d.replace(/\s+TASA\s+INT\.\s*[\d,]+%/g,'');      // quitar "TASA INT. 0,00%"
+  d=d.replace(/\s+0,00%/g,'');
+  d=d.replace(/\s+2\b/,'');                          // quitar sufijo " 2" de "AUFBAU PLAZA OESTE 2"
+  d=d.replace(/\s+/g,' ').trim();
+  return d;
+}
+
+// Parsear fecha BCI: viene como "22-05-2026" (dd-mm-yyyy) → "2026-05-22"
+function parseBCIDate(v){
+  if(!v)return'';
+  const s=String(v).trim();
+  // dd-mm-yyyy
+  const m=s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if(m)return`${m[3]}-${m[2]}-${m[1]}`;
+  // Excel serial
+  if(!isNaN(Number(s))){
+    return new Date(Math.round((Number(s)-25569)*86400000)).toISOString().substring(0,10);
+  }
+  return s.substring(0,10);
+}
+
+// Extraer info de cuotas desde descripción BCI no-facturada
+// "AUFBAU PLAZA OESTE SAN NC 05-24" → {cuota_actual:5, total_cuotas:24}
+function extractBCICuotas(desc){
+  const m=String(desc).match(/(?:CC|NC|CF|NF)\s+(\d+)-(\d+)/i);
+  if(m)return{cuota_actual:parseInt(m[1]),total_cuotas:parseInt(m[2])};
+  const m2=String(desc).match(/(\d+)\s+CUOTAS?/i);
+  if(m2)return{cuota_actual:parseInt(m2[1]),total_cuotas:null};
+  return null;
+}
+
+function handleXlsx(file,cardId,statusId){
+  if(!file)return;
+  const status=document.getElementById(statusId);
+  status.textContent='Leyendo…';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      if(!window.XLSX){status.textContent='⚠️ SheetJS no cargado aún, espera un segundo.';return;}
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+
+      // ── Detectar tipo de archivo BCI o CMR ──────────────────
+      // BCI: cabecera tiene "Código referencia", "Ciudad", "Tipo de tarjeta"
+      // CMR: cabecera tiene "CUOTAS PENDIENTES", "VALOR CUOTA"
+      let hi=-1;
+      for(let i=0;i<Math.min(15,rows.length);i++){
+        const r=rows[i].map(c=>String(c||'').toUpperCase());
+        if(r.some(c=>c.includes('FECHA'))&&r.some(c=>c.includes('DESCRIPCI'))){hi=i;break;}
+      }
+      if(hi<0){status.textContent='⚠️ No encontré cabecera. ¿Es el archivo correcto?';return;}
+      const h=rows[hi].map(c=>String(c||'').toUpperCase().trim());
+      const isBCI = h.some(c=>c.includes('C')&&c.includes('DIGO'))  // "Código referencia"
+                 || h.some(c=>c.includes('CIUDAD'))
+                 || (cardId==='bci');
+
+      const parsed=[];
+      let skipped=0;
+
+      if(isBCI){
+        // ── Parser BCI ──────────────────────────────────────────
+        // Cols: Fecha | Código ref | Ciudad | Descripción | Tipo tarjeta | Monto ($)
+        const ci={
+          fecha: h.findIndex(c=>c.includes('FECHA')),
+          ref:   h.findIndex(c=>c.includes('C')&&(c.includes('DIGO')||c.includes('REF'))),
+          desc:  h.findIndex(c=>c.includes('DESCRIPCI')),
+          monto: h.findIndex(c=>c.includes('MONTO')||c.includes('$')),
+        };
+        // Detect if this is "No Facturados" (has cuota codes in desc) or "Facturación"
+        // We process both the same way for storage purposes
+        for(let i=hi+1;i<rows.length;i++){
+          const row=rows[i];
+          if(!row[ci.fecha]&&!row[ci.desc])continue;
+          const fecha=parseBCIDate(row[ci.fecha]);
+          const descRaw=String(row[ci.desc]||'').trim();
+          const monto=Number(row[ci.monto])||0;
+          if(!fecha||!descRaw)continue;
+          // Excluir pagos (monto negativo) y cobros administrativos internos
+          if(monto<=0){skipped++;continue;}
+          if(/MONTO CANCELADO|PAGO NORMAL/i.test(descRaw)){skipped++;continue;}
+          const descNorm=normalizeBCIDesc(descRaw);
+          // Detectar si es cuota
+          const cuotaInfo=extractBCICuotas(descRaw);
+          const cuotas_pend=cuotaInfo?Math.max(0,(cuotaInfo.total_cuotas||0)-cuotaInfo.cuota_actual):0;
+          // valor_cuota = el monto de esta fila (es lo que se cobra este mes)
+          const valor_cuota=monto;
+          parsed.push({
+            fecha,
+            descBanco: descRaw,
+            descNorm,           // guardamos normalizada para matching futuro
+            monto,              // para BCI no-facturado es la cuota, no el total
+            cuotas_pend,
+            valor_cuota,
+          });
+        }
+      } else {
+        // ── Parser CMR (formato anterior) ──────────────────────
+        const ci={
+          fecha:    h.findIndex(c=>c.includes('FECHA')),
+          desc:     h.findIndex(c=>c.includes('DESCRIPCI')),
+          monto:    h.findIndex(c=>c.includes('MONTO')&&!c.includes('CUOTA')),
+          cuotas:   h.findIndex(c=>c.includes('CUOTAS')),
+          valcuota: h.findIndex(c=>c.includes('VALOR')&&c.includes('CUOTA')),
+        };
+        for(let i=hi+1;i<rows.length;i++){
+          const row=rows[i];
+          if(!row[ci.fecha]&&!row[ci.desc])continue;
+          let fecha=row[ci.fecha];
+          if(typeof fecha==='number') fecha=new Date(Math.round((fecha-25569)*86400000)).toISOString().substring(0,10);
+          else fecha=String(fecha||'').substring(0,10);
+          const desc=String(row[ci.desc]||'').trim().replace(/\*+$/, ''); // quitar asterisco final CMR
+          const monto=Math.abs(Number(row[ci.monto])||0);
+          const cuotas_pend=Number(row[ci.cuotas])||0;
+          const valor_cuota=Math.abs(Number(ci.valcuota>=0?row[ci.valcuota]:0)||monto);
+          if(!fecha||!desc||!monto)continue;
+          parsed.push({fecha,descBanco:desc,monto,cuotas_pend,valor_cuota});
+        }
+      }
+
+      const {added,updated}=mergeCARD(CARDS[cardId],parsed,true,isBCI);
+      const skipMsg=skipped>0?` (${skipped} pagos/cancelados ignorados)`:'';
+      status.textContent=`✓ ${parsed.length} filas procesadas — ${added} nuevas, ${updated} actualizadas${skipMsg}. Conceptos y divisiones conservados.`;
+      renderCardPage(cardId);renderCardKPIs(cardId);render();
+    }catch(err){status.textContent='⚠️ Error: '+err.message+' — '+err.stack?.split('\n')[0];}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function addBCIManual(){
+  const fecha=document.getElementById('bci-fecha').value;
+  const desc=document.getElementById('bci-desc').value.trim();
+  const monto=parseFloat(document.getElementById('bci-monto').value)||0;
+  const cuotas_pend=parseInt(document.getElementById('bci-cuotas').value)||0;
+  let valor_cuota=parseFloat(document.getElementById('bci-valcuota').value)||0;
+  if(!fecha||!desc||!monto){alert('Completa al menos fecha, descripción y monto.');return;}
+  if(!valor_cuota) valor_cuota=cuotas_pend>0?monto:monto;
+  mergeCARD(CARDS.bci,[{fecha,descBanco:desc,monto,cuotas_pend,valor_cuota}],true);
+  document.getElementById('bciImportStatus').textContent='✓ Movimiento agregado.';
+  renderCardPage('bci');renderCardKPIs('bci');render();
+}
+
+// ══════════════════════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════════════════════
+function showPage(name,btn){
+  // Limpiar style.display inline para que el CSS controle la visibilidad
+  document.querySelectorAll('.page').forEach(p=>{p.style.display='';p.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='cmr'||name==='bci'){renderCardPage(name);renderCardKPIs(name);}
+  if(name==='responsables')renderRespPage();
+}
+function switchTab(t,btn){
+  ['fijo','eventual'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// RESPONSABLES
+// ══════════════════════════════════════════════════════════
+function initColorPicker(){
+  document.getElementById('colorPicker').innerHTML=AVATAR_COLORS.map(c=>
+    `<div class="color-opt${c===selectedColor?' selected':''}" style="background:${c}" onclick="selectColor('${c}',this)"></div>`).join('');
+}
+function selectColor(c,el){selectedColor=c;document.querySelectorAll('.color-opt').forEach(o=>o.classList.remove('selected'));el.classList.add('selected');}
+function getResp(id){return responsables.find(r=>r.id==id)||null;}
+function respBadge(id){const r=getResp(id);if(!r)return'';return`<span class="badge-resp" style="background:${r.color}22;color:${r.color};">${r.iniciales}</span>`;}
+function renderRespSelects(){
+  const opts='<option value="">— Sin asignar —</option>'+responsables.map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+  ['fijo-resp','ev-resp'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;el.value=v;}});
+}
+function addResponsable(){
+  const nombre=document.getElementById('resp-nombre').value.trim();
+  const iniciales=document.getElementById('resp-iniciales').value.trim().toUpperCase();
+  if(!nombre||!iniciales){alert('Completa nombre e iniciales.');return;}
+  responsables.push({id:Date.now(),nombre,iniciales,color:selectedColor,pin:'0000'});
+  document.getElementById('resp-nombre').value='';document.getElementById('resp-iniciales').value='';
+  renderRespSelects();renderRespPage();
+  cancelEdit();
+  buildLoginScreen();
+  saveIfReady();
+}
+function removeResponsable(id){
+  responsables=responsables.filter(r=>r.id!==id);
+  gastos.forEach(g=>{if(g.resp==id)g.resp='';});
+  ['cmr','bci'].forEach(cid=>CARDS[cid].forEach(m=>{m.divisiones=m.divisiones.filter(d=>d.respId!=id);}));
+  renderRespSelects();renderRespPage();render();
+  buildLoginScreen();
+  saveIfReady();
+}
+
+// ══════════════════════════════════════════════════════════
+// GASTOS FIJOS / EVENTUALES
+// ══════════════════════════════════════════════════════════
+function setIngreso(){ingreso=parseFloat(document.getElementById('ingresoInput').value)||0;render();}
+function addGasto(tipo){
+  if(tipo==='fijo'){
+    const nombre=document.getElementById('fijo-nombre').value.trim();
+    const monto=parseFloat(document.getElementById('fijo-monto').value)||0;
+    if(!nombre||!monto){alert('Completa nombre y monto.');return;}
+    gastos.push({id:Date.now(),tipo:'fijo',nombre,monto,cat:document.getElementById('fijo-cat').value,resp:document.getElementById('fijo-resp').value});
+    document.getElementById('fijo-nombre').value='';document.getElementById('fijo-monto').value='';
+  }else{
+    const nombre=document.getElementById('ev-nombre').value.trim();
+    const monto=parseFloat(document.getElementById('ev-monto').value)||0;
+    if(!nombre||!monto){alert('Completa nombre y monto.');return;}
+    gastos.push({id:Date.now(),tipo:'eventual',nombre,monto,mes:parseInt(document.getElementById('ev-mes').value),cat:'Eventual',resp:document.getElementById('ev-resp').value});
+    document.getElementById('ev-nombre').value='';document.getElementById('ev-monto').value='';
+  }
+  render();
+}
+function removeGasto(id){gastos=gastos.filter(g=>g.id!==id);render();}
+
+// ══════════════════════════════════════════════════════════
+// CÁLCULO
+// ══════════════════════════════════════════════════════════
+function gastosParaMes(mesIdx){
+  let fijos=0,ev=0;
+  gastos.forEach(g=>{if(g.tipo==='fijo')fijos+=g.monto;else if(g.tipo==='eventual'&&g.mes===mesIdx)ev+=g.monto;});
+  const cmr=cardTotalMes('cmr',mesIdx);
+  const bci=cardTotalMes('bci',mesIdx);
+  return{fijos,cmr,bci,eventuales:ev,total:fijos+cmr+bci+ev};
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD RENDER
+// ══════════════════════════════════════════════════════════
+function render(){renderList();renderKPIs();renderAlerts();renderPieChart();renderBarChart();renderLineChart();renderTable();}
+
+function renderList(){
+  const c=document.getElementById('gastosList');
+  if(!gastos.length){c.innerHTML='<div class="empty-state">Sin gastos aún.</div>';return;}
+  c.innerHTML=gastos.map(g=>`<div class="item-row"><span class="item-name">${g.nombre}</span><span class="item-cat">${g.tipo==='fijo'?g.cat:'Mes '+(g.mes+1)}</span>${respBadge(g.resp)}<span class="item-amount">${g.tipo==='fijo'?fmt(g.monto)+'/m':fmt(g.monto)}</span><button class="btn btn-danger" onclick="removeGasto(${g.id})">✕</button></div>`).join('');
+}
+function renderKPIs(){
+  const{fijos,cmr,bci,eventuales,total}=gastosParaMes(0);
+  const bal=ingreso-total,pct=ingreso>0?total/ingreso*100:0;
+  document.getElementById('kpiIngreso').textContent=fmt(ingreso);
+  document.getElementById('kpiGastos').textContent=fmt(total);
+  const b=document.getElementById('kpiBalance');b.textContent=fmt(bal);b.className='kpi-value '+(bal>=0?'safe':'danger');
+  document.getElementById('kpiBalanceSub').textContent=bal>=0?'Superávit':'¡Déficit!';
+  const p=document.getElementById('kpiPct');p.textContent=Math.round(pct)+'%';p.className='kpi-value '+(pct>90?'danger':pct>75?'warning':'safe');
+}
+function renderAlerts(){
+  const z=document.getElementById('alertZone');z.innerHTML='';
+  const{total,cmr,bci}=gastosParaMes(0);
+  const bal=ingreso-total,pct=ingreso>0?total/ingreso*100:0;
+  if(bal<0)z.innerHTML+=`<div class="alert alert-danger">⚠️ Gastos superan ingreso en ${fmt(Math.abs(bal))} (CMR ${fmt(cmr)} + BCI ${fmt(bci)}/mes).</div>`;
+  else if(pct>80)z.innerHTML+=`<div class="alert alert-warning">📊 ${Math.round(pct)}% comprometido. CMR: ${fmt(cmr)} · BCI: ${fmt(bci)} en cuotas.</div>`;
+}
+let pieInst=null,barInst=null,lineInst=null;
+function renderPieChart(){
+  const{fijos,cmr,bci,eventuales}=gastosParaMes(0);
+  const catMap={};
+  gastos.forEach(g=>{if(g.tipo==='fijo')catMap[g.cat]=(catMap[g.cat]||0)+g.monto;});
+  if(cmr>0)catMap['CMR Falabella']=cmr;
+  if(bci>0)catMap['BCI Visa']=bci;
+  if(eventuales>0)catMap['Eventual']=(catMap['Eventual']||0)+eventuales;
+  const labels=Object.keys(catMap).filter(k=>catMap[k]>0);
+  const data=labels.map(l=>catMap[l]),colors=labels.map(l=>CAT_COLORS[l]||'#95A5A6');
+  document.getElementById('pieLegend').innerHTML=labels.map((l,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${colors[i]};"></span>${l}</span>`).join('');
+  if(pieInst){pieInst.destroy();pieInst=null;}
+  if(!labels.length)return;
+  pieInst=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)}}}}});
+}
+function renderBarChart(){
+  const{fijos,cmr,bci,eventuales,total}=gastosParaMes(0);
+  if(barInst){barInst.destroy();barInst=null;}
+  barInst=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Ingreso','G.Fijos','CMR','BCI','Eventuales','Ahorro'],datasets:[{data:[ingreso,fijos,cmr,bci,eventuales,Math.max(0,ingreso-total)],backgroundColor:['#5A8A30','#C0392B','#E74C3C','#1A4E8F','#7F8C8D','#27AE60'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+(v/1000000).toFixed(1)+'M',color:'#7A756C',font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{color:'#7A756C',font:{size:10},autoSkip:false},grid:{display:false}}}}});
+}
+function renderLineChart(){
+  const n=activePeriod,now=new Date(),labels=[],iD=[],gD=[],aD=[];
+  for(let i=0;i<n;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    labels.push(d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));
+    const{total}=gastosParaMes(i);iD.push(ingreso);gD.push(total);aD.push(Math.max(0,ingreso-total));
+  }
+  if(lineInst){lineInst.destroy();lineInst=null;}
+  lineInst=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels,datasets:[
+    {data:iD,borderColor:'#5A8A30',backgroundColor:'rgba(90,138,48,.08)',borderWidth:2.5,pointRadius:4,fill:false,tension:.3},
+    {data:gD,borderColor:'#C0392B',backgroundColor:'rgba(192,57,43,.08)',borderWidth:2.5,pointRadius:4,fill:true,tension:.3},
+    {data:aD,borderColor:'#1A5276',backgroundColor:'rgba(26,82,118,.06)',borderWidth:2,pointRadius:4,fill:false,tension:.3,borderDash:[5,3]}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K',color:'#7A756C',font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{color:'#7A756C',font:{size:10}},grid:{display:false}}}}});
+}
+function renderTable(){
+  const n=activePeriod,now=new Date();let rows='';
+  for(let i=0;i<n;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const mes=d.toLocaleDateString('es-CL',{month:'long',year:'numeric'});
+    const{fijos,cmr,bci,eventuales,total}=gastosParaMes(i);
+    const aho=ingreso-total;
+    rows+=`<tr><td>${mes.charAt(0).toUpperCase()+mes.slice(1)}</td><td>${fmt(ingreso)}</td><td>${fmt(fijos)}</td><td>${fmt(cmr)}</td><td>${fmt(bci)}</td><td>${fmt(eventuales)}</td><td class="td-red">${fmt(total)}</td><td class="${aho>=0?'td-green':'td-red'}">${fmt(aho)}</td></tr>`;
+  }
+  document.getElementById('projTbody').innerHTML=rows||'<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Agrega gastos para ver la proyección.</td></tr>';
+}
+function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderLineChart();renderTable();}
+
+// ══════════════════════════════════════════════════════════
+// CARD PAGE (CMR y BCI comparten la misma lógica)
+// ══════════════════════════════════════════════════════════
+const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
+
+function filterCard(cardId,f,btn){
+  cardFilters[cardId]=f;
+  document.querySelectorAll(`#page-${cardId} .filter-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCardTable(cardId);
+}
+
+function renderCardPage(cardId){
+  renderCardTable(cardId);
+  renderCardCharts(cardId);
+}
+
+function renderCardKPIs(cardId){
+  const all=[...CARDS[cardId].values()];
+  const activas=all.filter(m=>m.es_cuota&&m._estado!=='done');
+  const cuotaT=activas.reduce((s,m)=>s+m.valor_cuota,0);
+  const sinConc=activas.filter(m=>!m.concepto||!m.concepto.trim()).length;
+  const sinResp=activas.filter(m=>m.divisiones.length===0).length;
+  const maxM=[...activas].sort((a,b)=>b.valor_cuota-a.valor_cuota)[0];
+  document.getElementById(cardId+'KpiCuota').textContent=fmt(cuotaT);
+  document.getElementById(cardId+'KpiCuotaSub').textContent=activas.length+' compromisos activos';
+  const sk=document.getElementById(cardId+'KpiSinConc');sk.textContent=sinConc;sk.className='kpi-value '+(sinConc>0?'warning':'safe');
+  const rk=document.getElementById(cardId+'KpiSinResp');rk.textContent=sinResp;rk.className='kpi-value '+(sinResp>0?'warning':'safe');
+  document.getElementById(cardId+'KpiMax').textContent=maxM?fmt(maxM.valor_cuota):'$0';
+  document.getElementById(cardId+'KpiMaxSub').textContent=maxM?(maxM.concepto||maxM.descBanco).substring(0,32):'—';
+}
+
+// ── Fechas de corte ──────────────────────────────────────
+// CMR: corte día 19 de cada mes (entra al estado del mes siguiente)
+// BCI: corte día 27 (período 28→27)
+const CORTES={cmr:19,bci:27};
+
+// Retorna true si la fecha del movimiento está dentro del período de facturación actual
+function enPeriodoActual(cardId, fechaISO){
+  const d=new Date(fechaISO+'T12:00');
+  const hoy=new Date();
+  const corte=CORTES[cardId];
+  // Inicio del período actual
+  let inicio;
+  if(hoy.getDate()>corte){
+    inicio=new Date(hoy.getFullYear(),hoy.getMonth(),corte+1);
+  } else {
+    inicio=new Date(hoy.getFullYear(),hoy.getMonth()-1,corte+1);
+  }
+  // Fin del período actual
+  let fin;
+  if(hoy.getDate()>corte){
+    fin=new Date(hoy.getFullYear(),hoy.getMonth()+1,corte);
+  } else {
+    fin=new Date(hoy.getFullYear(),hoy.getMonth(),corte);
+  }
+  return d>=inicio && d<=fin;
+}
+
+// Renderiza los pills de división de un movimiento
+function divPillsHTML(m){
+  if(!m.divisiones||!m.divisiones.length) return '<span style="color:var(--text-muted);font-size:11px;font-style:italic;">—</span>';
+  const pctTotal=divPctTotal(m);
+  // monto neto = valor_cuota menos abono registrado
+  const neto=Math.max(0,m.valor_cuota-(m.abono||0));
+  const pills=m.divisiones.map(d=>{
+    const r=getResp(d.respId);if(!r)return'';
+    const montoResp=fmt(neto*d.pct/100);
+    return`<span class="div-pill" style="background:${r.color}22;color:${r.color};">${r.iniciales} <span class="pct">${d.pct}%</span> <span style="opacity:.7;font-size:9px;">${montoResp}/m</span></span>`;
+  }).join('');
+  const resto=100-pctTotal;
+  const restoPill=resto>0?`<span class="div-pill" style="background:var(--warn-light);color:var(--warn);">sin asignar ${resto}%</span>`:'';
+  const abonoPill=(m.abono&&m.abono>0)?`<span class="div-pill" style="background:var(--accent-light);color:var(--accent-mid);">abono ${fmt(m.abono)}</span>`:'';
+  return`<div class="div-pills">${pills}${restoPill}${abonoPill}</div>`;
+}
+
+function renderCardTable(cardId){
+  cancelEdit();
+  let entries=[...CARDS[cardId].values()];
+  const f=cardFilters[cardId];
+  if(f==='cuotas')       entries=entries.filter(m=>m.es_cuota&&m._estado!=='done');
+  else if(f==='contado') entries=entries.filter(m=>!m.es_cuota);
+  else if(f==='sin-conc')entries=entries.filter(m=>m._estado!=='done'&&(!m.concepto||!m.concepto.trim()));
+  else if(f==='sin-resp')entries=entries.filter(m=>m._estado!=='done'&&m.es_cuota&&!m.divisiones.length);
+  else if(f==='nuevos')  entries=entries.filter(m=>m._estado==='new'||m._estado==='upd');
+  else if(f==='periodo') entries=entries.filter(m=>enPeriodoActual(cardId,m.fecha));
+  const ord={new:0,upd:1,normal:2,done:3};
+  entries.sort((a,b)=>ord[a._estado]-ord[b._estado]||b.fecha.localeCompare(a.fecha));
+  document.getElementById(cardId+'MovCount').textContent=entries.length+' movimientos';
+  const tbody=document.getElementById(cardId+'Tbody');
+  tbody.innerHTML=entries.map(m=>{
+    const badge=m._estado==='new'?'<span class="badge-new">NUEVO</span>':m._estado==='upd'?'<span class="badge-upd">ACTUALIZ.</span>':m._estado==='done'?'<span class="badge-done">TERMINADO</span>':'';
+    const periodobadge=enPeriodoActual(cardId,m.fecha)?'<span class="badge-periodo">PERÍODO ACT.</span>':'';
+    const concCell=m.concepto?`<span class="concepto-val">${m.concepto}</span>`:`<span style="color:var(--text-muted);font-size:11px;font-style:italic;">—</span>`;
+    const rowClass=m._estado==='new'?'row-new':m._estado==='upd'?'row-upd':m._estado==='done'?'row-done':'';
+    const domId=rowDomId(cardId,m.key);
+    const jsKey=JSON.stringify(m.key);const jsCard=JSON.stringify(cardId);
+    const neto=Math.max(0,m.valor_cuota-(m.abono||0));
+    const cuotaCell=m.es_cuota
+      ? (m.abono>0
+          ? `<span class="td-red" style="text-decoration:line-through;font-size:10px;">${fmt(m.valor_cuota)}</span> <span class="td-green">${fmt(neto)}/m</span>`
+          : `<span class="td-red">${fmt(m.valor_cuota)}/m</span>`)
+      : fmt(m.valor_cuota);
+    return`<tr id="${domId}" class="${rowClass}">
+      <td style="white-space:nowrap;">${m.fecha}${badge}${periodobadge}</td>
+      <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${m.descBanco}">${m.descBanco}</td>
+      <td>${concCell}</td>
+      <td>${divPillsHTML(m)}</td>
+      <td style="white-space:nowrap;">${fmt(m.monto)}</td>
+      <td>${m.es_cuota?m.cuotas_pend:'—'}</td>
+      <td style="white-space:nowrap;">${cuotaCell}</td>
+      <td>${m.es_cuota?'<span style="font-size:10px;background:var(--info-light);color:var(--info);padding:1px 5px;border-radius:3px;">Cuotas</span>':'<span style="font-size:10px;background:var(--surface2);color:var(--text-muted);padding:1px 5px;border-radius:3px;">Contado</span>'}</td>
+      <td><button class="btn-edit" onclick='openEdit(${jsCard},${jsKey})'>✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// EDITOR INLINE CON DIVISIÓN
+// ══════════════════════════════════════════════════════════
+let _editCardId='', _editKey='';
+
+function openEdit(cardId,key){
+  cancelEdit();
+  const m=CARDS[cardId].get(key);if(!m)return;
+  const domId=rowDomId(cardId,key);
+  const row=document.getElementById(domId);if(!row)return;
+  _editCardId=cardId; _editKey=key;
+  const jsCard=JSON.stringify(cardId);const jsKey=JSON.stringify(key);
+  const editRow=document.createElement('tr');
+  editRow.className='edit-row';editRow.id='edit-open-row';
+  editRow.innerHTML=`
+    <td colspan="2">
+      <div class="field-hint">Referencia banco</div>
+      <span class="banco-ref" title="${m.descBanco}">${m.descBanco}</span>
+      <div style="font-size:9px;font-family:monospace;color:var(--text-muted);margin-top:2px;opacity:.45;">${key}</div>
+    </td>
+    <td>
+      <div class="field-hint">Concepto (visible para todos)</div>
+      <input type="text" id="edit-concepto" placeholder="Ej: Zapatillas de Javier" value="${m.concepto||''}" style="width:100%;">
+    </td>
+    <td colspan="6">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;">
+        <div>
+          <div class="field-hint">División cuota mensual (${fmt(m.valor_cuota)}/m)</div>
+          <div class="div-editor" id="divEditor">
+            <div id="divRows"></div>
+            <div class="div-total-row">
+              <span id="divTotalLabel"></span>
+              <button class="btn-sm" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="addDivRowUI()">+ Persona</button>
+            </div>
+          </div>
+        </div>
+        <div style="min-width:160px;">
+          <div class="field-hint">Abono anticipado</div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <input type="number" id="edit-abono" min="0" value="${m.abono||0}" style="width:100px;font-size:12px;padding:5px 7px;" oninput="updateAbonoPreview()">
+            <span style="font-size:11px;color:var(--text-muted);">CLP</span>
+          </div>
+          <div id="abonoPreview" style="font-size:11px;margin-top:3px;color:var(--accent-mid);"></div>
+        </div>
+      </div>
+      <div class="edit-actions" style="margin-top:8px;">
+        <button class="btn-save" onclick='saveEdit(${jsCard},${jsKey})'>Guardar</button>
+        <button class="btn-cancel" onclick="cancelEdit()">Cancelar</button>
+        ${(m.concepto||m.divisiones.length||m.abono)?`<button class="btn-danger" onclick='clearEntry(${jsCard},${jsKey})'>Limpiar todo</button>`:''}
+      </div>
+    </td>`;
+  row.insertAdjacentElement('afterend',editRow);
+  buildDivRows(cardId,key,m.divisiones.map(d=>({...d})));
+  updateAbonoPreview();
+  document.getElementById('edit-concepto').focus();
+}
+
+// Construye las filas de división en el DOM sin usar innerHTML en cada keystroke.
+// Cada fila tiene su propio input que escribe directo al array _divData.
+let _divData=[];
+
+function buildDivRows(cardId,key,initialDivs){
+  _divData=initialDivs.map(d=>({...d}));
+  renderDivEditor(cardId,key);
+}
+
+function renderDivEditor(cardId,key){
+  const m=CARDS[cardId].get(key);if(!m)return;
+  const container=document.getElementById('divRows');if(!container)return;
+  // Construir HTML completo de las filas — solo se llama cuando se agrega/elimina fila,
+  // NO cuando el usuario escribe en el input de %.
+  const respOpts=(selId)=>responsables.map(r=>`<option value="${r.id}"${r.id==selId?' selected':''}>${r.iniciales} · ${r.nombre}</option>`).join('');
+  container.innerHTML=_divData.map((d,i)=>`
+    <div class="div-row" id="divrow-${i}">
+      <select id="divsel-${i}" onchange="_divData[${i}].respId=this.value;updateDivTotals('${cardId}','${key.replace(/'/g,"\\'")}')">
+        <option value="">— Persona —</option>${respOpts(d.respId)}
+      </select>
+      <input type="number" id="divpct-${i}" min="0" max="100" value="${d.pct||''}"
+        onchange="_divData[${i}].pct=Math.min(100,Math.max(0,Number(this.value)||0));updateDivTotals('${cardId}','${key.replace(/'/g,"\\'")}')">
+      <span class="pct-label">%</span>
+      <span class="monto-calc" id="divcalc-${i}">${fmt((m.valor_cuota-(m.abono||0))*((d.pct||0)/100))}/m</span>
+      <button class="btn-danger" onclick="_divData.splice(${i},1);renderDivEditor('${cardId}','${key.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('');
+  updateDivTotals(cardId,key);
+}
+
+// Actualiza SOLO los montos calculados y el label de total — SIN reconstruir el DOM.
+// Esto permite escribir en el input de % libremente sin perder el foco.
+function updateDivTotals(cardId,key){
+  const m=CARDS[cardId].get(key);if(!m)return;
+  const neto=m.valor_cuota-(m.abono||0);
+  // Leer valores actuales de los inputs (pueden no estar en _divData aún si el usuario está escribiendo)
+  let pctTotal=0;
+  _divData.forEach((d,i)=>{
+    const inp=document.getElementById(`divpct-${i}`);
+    const pct=inp?Math.min(100,Math.max(0,Number(inp.value)||0)):(d.pct||0);
+    _divData[i].pct=pct;
+    pctTotal+=pct;
+    const calc=document.getElementById(`divcalc-${i}`);
+    if(calc)calc.textContent=fmt(neto*pct/100)+'/m';
+  });
+  const label=document.getElementById('divTotalLabel');if(!label)return;
+  const resto=100-pctTotal;
+  if(pctTotal===0) label.innerHTML='<span style="color:var(--text-muted);">Sin divisiones</span>';
+  else if(pctTotal<100) label.innerHTML=`<span class="div-total-warn">⚠️ ${pctTotal}% asignado — ${resto}% sin asignar</span>`;
+  else if(pctTotal===100) label.innerHTML=`<span class="div-total-ok">✓ 100% asignado</span>`;
+  else label.innerHTML=`<span class="div-total-err">✗ ${pctTotal}% — supera el 100%</span>`;
+}
+
+function updateAbonoPreview(){
+  const m=CARDS[_editCardId].get(_editKey);if(!m)return;
+  const abono=Number(document.getElementById('edit-abono').value)||0;
+  const prev=document.getElementById('abonoPreview');if(!prev)return;
+  if(abono<=0){prev.textContent='';return;}
+  const neto=Math.max(0,m.valor_cuota-abono);
+  prev.textContent=`Neto a pagar: ${fmt(neto)}/m`;
+  // Actualizar cálculos de división con el nuevo neto
+  updateDivTotals(_editCardId,_editKey);
+}
+
+function addDivRowUI(){
+  _divData.push({respId:'',pct:0});
+  renderDivEditor(_editCardId,_editKey);
+  // Focus al nuevo select
+  const newSel=document.getElementById(`divsel-${_divData.length-1}`);
+  if(newSel)newSel.focus();
+}
+
+function saveEdit(cardId,key){
+  const m=CARDS[cardId].get(key);if(!m)return;
+  // Leer valores finales de los inputs antes de guardar
+  _divData.forEach((d,i)=>{
+    const inp=document.getElementById(`divpct-${i}`);
+    if(inp)d.pct=Math.min(100,Math.max(0,Number(inp.value)||0));
+    const sel=document.getElementById(`divsel-${i}`);
+    if(sel)d.respId=sel.value;
+  });
+  const total=_divData.reduce((s,d)=>s+Number(d.pct),0);
+  if(total>100){alert('La suma de porcentajes supera el 100%. Corrígela antes de guardar.');return;}
+  m.concepto=document.getElementById('edit-concepto').value.trim();
+  m.abono=Math.max(0,Number(document.getElementById('edit-abono').value)||0);
+  m.divisiones=_divData.filter(d=>d.respId&&Number(d.pct)>0).map(d=>({respId:d.respId,pct:Number(d.pct)}));
+  cancelEdit();
+  renderCardTable(cardId);renderCardKPIs(cardId);renderCardCharts(cardId);render();
+}
+function cancelEdit(){const p=document.getElementById('edit-open-row');if(p)p.remove();_divData=[];_editCardId='';_editKey='';}
+function clearEntry(cardId,key){const m=CARDS[cardId].get(key);if(!m)return;m.concepto='';m.divisiones=[];m.abono=0;cancelEdit();renderCardTable(cardId);renderCardKPIs(cardId);renderCardCharts(cardId);render();}
+
+// ══════════════════════════════════════════════════════════
+// GRÁFICOS TARJETA
+// ══════════════════════════════════════════════════════════
+function renderCardCharts(cardId){
+  // TOP 10
+  let inst=cardCharts[cardId].top;if(inst){inst.destroy();}
+  const sorted=[...CARDS[cardId].values()].filter(m=>m.es_cuota&&m._estado!=='done').sort((a,b)=>b.valor_cuota-a.valor_cuota).slice(0,10);
+  const labels=sorted.map(m=>{const l=m.concepto||m.descBanco;return l.length>24?l.substring(0,24)+'…':l;});
+  const colors=sorted.map(m=>m.divisiones.length>0?'#27AE60':'#C0392B');
+  cardCharts[cardId].top=new Chart(document.getElementById(cardId+'TopChart'),{type:'bar',data:{labels,datasets:[{data:sorted.map(m=>m.valor_cuota),backgroundColor:colors,borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)+'/mes'}}},scales:{x:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K',color:'#7A756C',font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},y:{ticks:{color:'#7A756C',font:{size:10}},grid:{display:false}}}}});
+  // CARGA 12M
+  let inst2=cardCharts[cardId].carga;if(inst2){inst2.destroy();}
+  const now=new Date(),cLabels=[],cData=[];
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    cLabels.push(d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));
+    cData.push(cardTotalMes(cardId,i));
+  }
+  const color=cardId==='bci'?'#1A4E8F':'#C0392B';
+  const bgColor=cardId==='bci'?'rgba(26,78,143,.1)':'rgba(192,57,43,.1)';
+  cardCharts[cardId].carga=new Chart(document.getElementById(cardId+'CargaChart'),{type:'line',data:{labels:cLabels,datasets:[{data:cData,borderColor:color,backgroundColor:bgColor,borderWidth:2.5,pointRadius:5,fill:true,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)}}},scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K',color:'#7A756C',font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},x:{ticks:{color:'#7A756C',font:{size:10}},grid:{display:false}}}}});
+}
+
+// ══════════════════════════════════════════════════════════
+// RESPONSABLES PAGE
+// ══════════════════════════════════════════════════════════
+function renderRespPage(){
+  const grid=document.getElementById('respGrid');
+  if(!responsables.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1;">Sin responsables aún.</div>';}
+  else grid.innerHTML=responsables.map(r=>{
+    const cmrC=[...CARDS.cmr.values()].filter(m=>m.divisiones.some(d=>d.respId==r.id)).length;
+    const bciC=[...CARDS.bci.values()].filter(m=>m.divisiones.some(d=>d.respId==r.id)).length;
+    return`<div class="resp-card"><div class="resp-avatar" style="background:${r.color}22;color:${r.color};">${r.iniciales}</div><div class="resp-info"><div class="resp-name">${r.nombre}</div><div class="resp-count">CMR: ${cmrC} · BCI: ${bciC} movs.</div></div><button class="btn btn-danger" onclick="removeResponsable(${r.id})">✕</button></div>`;
+  }).join('');
+
+  // Tabla desglose
+  const calcResp=id=>{
+    let fijos=0,ev=0,cmr=0,bci=0;
+    gastos.forEach(g=>{if(g.resp==id){if(g.tipo==='fijo')fijos+=g.monto;else if(g.tipo==='eventual'&&g.mes===0)ev+=g.monto;}});
+    cmr=cardRespMes('cmr',id,0);
+    bci=cardRespMes('bci',id,0);
+    return{fijos,cmr,bci,ev,total:fijos+cmr+bci+ev};
+  };
+  const rows=[];
+  // sin asignar
+  let fNA=0,evNA=0;
+  gastos.forEach(g=>{if(!g.resp){if(g.tipo==='fijo')fNA+=g.monto;else if(g.tipo==='eventual'&&g.mes===0)evNA+=g.monto;}});
+  // CMR sin asignar = porción sin dividir
+  let cmrNA=0,bciNA=0;
+  CARDS.cmr.forEach(m=>{if(m.es_cuota&&m._estado!=='done'){const r=100-divPctTotal(m);if(r>0)cmrNA+=m.valor_cuota*r/100;}});
+  CARDS.bci.forEach(m=>{if(m.es_cuota&&m._estado!=='done'){const r=100-divPctTotal(m);if(r>0)bciNA+=m.valor_cuota*r/100;}});
+  const totalNA=fNA+cmrNA+bciNA+evNA;
+  if(totalNA>0)rows.push(`<tr><td><em style="color:var(--text-muted);">Sin asignar</em></td><td>${fmt(fNA)}</td><td>${fmt(cmrNA)}</td><td>${fmt(bciNA)}</td><td>${fmt(evNA)}</td><td class="td-red">${fmt(totalNA)}</td><td>${ingreso>0?Math.round(totalNA/ingreso*100):0}%</td></tr>`);
+  responsables.forEach(r=>{
+    const d=calcResp(r.id);
+    rows.push(`<tr><td><span class="badge-resp" style="background:${r.color}22;color:${r.color};margin-right:5px;">${r.iniciales}</span>${r.nombre}</td><td>${fmt(d.fijos)}</td><td>${fmt(d.cmr)}</td><td>${fmt(d.bci)}</td><td>${fmt(d.ev)}</td><td class="td-red">${fmt(d.total)}</td><td>${ingreso>0?Math.round(d.total/ingreso*100):0}%</td></tr>`);
+  });
+  document.getElementById('respTbody').innerHTML=rows.join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.25rem;">Sin datos.</td></tr>';
+
+  // Insertar/actualizar panel de PINs
+  const respTbody=document.getElementById('respTbody');
+  if(respTbody){
+    const tableCard=respTbody.closest('.table-card');
+    if(tableCard){
+      let pm=document.getElementById('pinManager');
+      if(!pm){
+        pm=document.createElement('div');
+        pm.id='pinManager';
+        pm.className='table-card';
+        pm.style.marginTop='1.5rem';
+        tableCard.insertAdjacentElement('afterend',pm);
+      }
+      renderPinManager();
+    }
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// DATOS INICIALES CMR
+// ══════════════════════════════════════════════════════════
+function cargarCMRIniciales(){
+  const raw=[
+    ["2026-05-21","COMPRA PEDIDOS YA*",500,0,500],["2026-05-21","COMPRA PEDIDOS YA*",19590,0,19590],
+    ["2026-05-21","COMPRA RIP CURL PLAZA SUR*",23240,0,23240],["2026-05-20","COMPRA BCI SEGUROS*",29510,0,29510],
+    ["2026-05-20","COMPRA FARMACIAS DEL DOCTOR S*",14160,0,14160],["2026-05-20","COMPRA Spotify P135F0A226*",8250,0,8250],
+    ["2026-05-20","COMPRA CLINICA BUPA SANTIAGO*",155486,0,155486],["2026-05-20","COMPRA CUOTAS SIN INTERES CLINICA BUPA SANTIAGO*",254580,0,254580],
+    ["2026-05-20","COMPRA LOS ALMENDROS*",17990,0,17990],["2026-05-20","COMPRA EZVIZLIFE.COM",4799,0,4799],
+    ["2026-05-18","COMPRA CUOTAS SIN INTERES MP *INFANTI",72990,11,6082],["2026-05-16","COMPRA FALABELLA.COM",139990,5,23331],
+    ["2026-05-15","COMPRA CUOTAS SIN INTERES MERCADOPAGO *INNOVATI",26380,5,4396],["2026-05-13","COMPRA CUOTAS SIN INTERES GYG MALL PLAZA SUR D",79990,5,13331],
+    ["2026-05-13","COMPRA CUOTAS SIN INTERES FEROUCH PZA SUR",46900,5,7816],["2026-05-13","COMPRA PUNTO TICKET",347600,3,126721],
+    ["2026-05-10","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",19980,5,3330],["2026-05-10","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",159990,5,26665],
+    ["2026-05-10","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",29990,5,4998],["2026-05-09","COMPRA CUOTAS SIN INTERES MERCADOPAGO *MERCADOL",15411,5,2568],
+    ["2026-05-09","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",49980,5,8330],["2026-05-09","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",46990,5,7831],
+    ["2026-05-07","COMPRA CUOTAS SIN INTERES MERCADOPAGO *MERCADOL",13990,2,4663],["2026-05-07","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",29337,5,4889],
+    ["2026-05-04","COMPRA CUOTAS SIN INTERES PILLIN",37980,2,12660],["2026-05-04","COMPRA CUOTAS SIN INTERES PILLIN",28980,2,9660],
+    ["2026-05-03","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",14367,5,2394],["2026-05-03","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",14529,5,2421],
+    ["2026-05-02","COMPRA CUOTAS SIN INTERES CATERPILLAR PLAZA SUR",34993,5,5832],["2026-05-02","COMPRA CUOTAS SIN INTERES COLUMBIA PLAZA SUR",74990,8,8332],
+    ["2026-04-29","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",46265,5,7710],["2026-04-29","COMPRA CUOTAS SIN INTERES MERCADO PAGO",102780,5,17130],
+    ["2026-04-27","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",12652,5,2108],["2026-04-25","COMPRA FALABELLA.COM",34990,5,5831],
+    ["2026-04-25","COMPRA FALABELLA.COM",17990,5,2998],["2026-04-23","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",66990,5,11165],
+    ["2026-04-23","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",66990,5,11165],["2026-04-12","COMPRA CUOTAS SIN INTERES 0356-BATA SAN BERNA",28240,1,9414],
+    ["2026-04-12","COMPRA CUOTAS SIN INTERES MP *FORUS",72584,4,12097],["2026-04-05","COMPRA CUOTAS SIN INTERES EASY SAN BERNARDO",28570,1,9524],
+    ["2026-04-04","COMPRA CUOTAS SIN INTERES EASY SAN BERNARDO",20920,1,6974],["2026-04-03","COMPRA CUOTAS SIN INTERES FLORES PLAZA SUR",58766,4,9794],
+    ["2026-04-03","COMPRA CUOTAS SIN INTERES HEAD PLAZA SUR 2",25290,1,8430],["2026-04-02","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",17900,4,2983],
+    ["2026-03-29","COMPRA FALABELLA.COM",51980,4,8663],["2026-03-28","COMPRA H&M MALL PLAZA SUR",42160,1,15135],
+    ["2026-03-28","COMPRA ILUSTRE MUNIC DE SA",449886,4,74981],["2026-03-28","COMPRA FALABELLA.COM",130980,8,13098],
+    ["2026-03-27","COMPRA I MUN DE LA CISTERN",165872,10,13822],["2026-03-22","COMPRA I MUNI DE PELARCO",114249,4,19041],
+    ["2026-03-20","COMPRA CUOTAS SIN INTERES MP *FORUS",99678,10,8306],["2026-03-05","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",29568,3,4928],
+    ["2026-03-01","COMPRA CUOTAS SIN INTERES BIS SAN BERNARDO",116980,3,19496],["2026-02-26","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",59990,3,9998],
+    ["2026-02-24","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",58869,3,9811],["2026-02-24","COMPRA FALABELLA.COM",42279,3,7046],
+    ["2026-02-20","COMPRA FALABELLA.COM",142910,3,23420],["2026-02-09","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",26745,2,4457],
+    ["2026-02-08","COMPRA CUOTAS SIN INTERES MERCADO PAGO",50099,8,4174],["2026-02-06","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",22401,2,3733],
+    ["2026-02-05","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",33990,2,5665],["2026-02-02","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",39990,2,6665],
+    ["2026-01-27","COMPRA EASY SAN BERNARDO",93210,2,17439],["2026-01-22","COMPRA CUOTAS SIN INTERES MERCADO PAGO",45990,8,3832],
+    ["2026-01-19","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",62875,8,5239],["2026-01-15","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",57990,1,9665],
+    ["2026-01-14","COMPRA CUOTAS SIN INTERES MERCADOPAGO *MERCADOL",30874,7,2572],["2026-01-13","COMPRA EASYCL",41790,2,7926],
+    ["2026-01-12","COMPRA CUOTAS SIN INTERES MIMET",175000,7,14583],["2026-01-08","COMPRA CUOTAS SIN INTERES EBEST SPA",23980,1,4000],
+    ["2025-12-28","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",14844,7,1237],["2025-12-28","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",29306,7,2442],
+    ["2025-12-24","COMPRA MERCADOPAGO *FISIOCEN",85000,1,15947],["2025-12-22","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",8294,1,1384],
+    ["2025-12-21","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",11831,1,1976],["2025-12-21","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",26148,1,4358],
+    ["2025-12-20","COMPRA EASY SAN BERNARDO",36561,1,6887],["2025-12-16","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",138990,6,11582],
+    ["2025-12-01","COMPRA FALABELLA.COM",179990,4,17999],["2025-10-14","COMPRA CUOTAS SIN INTERES MERCADO LIBRE",18099,4,1508],
+    ["2025-10-11","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",105990,4,8832],["2025-10-11","COMPRA CUOTAS SIN INTERES VIVO OUTLET MAIPU",49995,4,4166],
+    ["2025-09-10","COMPRA CUOTAS SIN INTERES MERCADO PAGO",372980,3,31081],["2025-09-08","COMPRA CUOTAS SIN INTERES MP *MERCADO LIBRE",91990,3,7665],
+    ["2025-08-26","COMPRA CUOTAS SIN INTERES MERPAGO*CLUBRECREARSA",575940,3,47995],["2025-08-02","COMPRA CUOTAS SIN INTERES CANNON PLAZA SUR",50991,2,4249],
+    ["2025-07-30","COMPRA CUOTAS SIN INTERES MP *HUAWEI CL",41990,2,3499],["2025-07-13","COMPRA CUOTAS SIN INTERES MP *AUDIOMUSICA",65080,1,5427],
+    ["2025-07-07","COMPRA CUOTAS SIN INTERES MP *OSTER",99990,1,8338]
+  ];
+  mergeCARD(CARDS.cmr,raw.map(r=>({fecha:r[0],descBanco:r[1],monto:r[2],cuotas_pend:r[3],valor_cuota:r[4]})),false);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+document.getElementById('headerDate').textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+// Ocultar header y app hasta que haya sesión
+document.querySelector('header').style.display='none';
+document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+initColorPicker();
+initDropZones();
+cargarCMRIniciales();
+
+// ── Responsable por defecto: solo el admin ────────────────
+// Los demás se agregan desde la pestaña Responsables.
+responsables=[
+  {id:101, nombre:'Nicolás Galindo', iniciales:'NG', color:'#2980B9', pin:'1234'},
+];
+
+// ── Datos BCI desde archivos subidos ─────────────────────
+// NoFacturadosBCI.xls — movimientos no facturados (periodo actual)
+// Tarjeta: BCI Mastercard Platinum **** 5229 — Nicolás Galindo
+const bciBruto=[
+  // [fecha_iso, descBanco, monto_cuota, cuotas_pendientes]
+  // cuotas_pend = total_cuotas - cuota_actual (cuántas faltan incluyendo esta)
+  ['2026-05-22','MERCADOPAGO *MERCADOL Las Cond 06 CUOTA',  25394, 0],  // cuota 6 sin total conocido
+  ['2026-05-21','COPEC APP SANTIAGO',                       43303, 0],  // contado
+  ['2026-05-07','COPEC APP COMPRAS',                        36230, 0],  // contado
+  ['2025-12-29','I MUNI DE PELARCO PEL CF 04-06',           11004, 2],  // cuota 4 de 6 → quedan 2
+  ['2025-12-13','AUFBAU PLAZA OESTE SAN NC 05-24',           21458,19],  // cuota 5 de 24 → quedan 19
+  ['2025-11-28','MP *MERCADO LIB SAN CC 06-12',             22808, 6],  // cuota 6 de 12 → quedan 6
+  // FacturacionBCI.xls — periodo anterior (facturado abr-2026)
+  ['2026-04-28','COBRO ADM MENSUAL',                         4009, 0],  // cargo mensual
+  ['2026-04-23','COPEC APP SANTIAGO',                       43465, 0],
+  ['2026-04-16','MP *MERCADO LIBRE',                        22808, 0],  // ya facturado = cuota pagada
+  ['2026-04-16','AUFBAU PLAZA OESTE',                       21458, 0],
+  ['2026-04-16','I MUNI DE PELARCO',                        11004, 0],
+  ['2026-04-09','COPEC APP SANTIAGO',                       43406, 0],
+  ['2026-03-30','QUEEN INSTRUMENTOS SANTIAGO',               8800, 0],
+];
+// Cargar BCI sin marcar como nuevo (son datos iniciales)
+mergeCARD(CARDS.bci, bciBruto.map(r=>({
+  fecha: r[0],
+  descBanco: r[1],
+  descNorm: normalizeBCIDesc(r[1]),
+  monto: r[2],
+  cuotas_pend: r[3],
+  valor_cuota: r[2],
+})), false, true);
+
+// Asignar Nicolás como responsable del 100% en BCI (tarjeta personal)
+// El usuario podrá cambiar esto desde el editor inline
+CARDS.bci.forEach(m=>{
+  if(!m.divisiones.length) m.divisiones=[{respId:101,pct:100}];
+});
+
+gastos=[
+  {id:1,tipo:'fijo',nombre:'Arriendo',    monto:550000,cat:'Vivienda',       resp:101},
+  {id:2,tipo:'fijo',nombre:'Supermercado',monto:180000,cat:'Alimentación',   resp:''},
+  {id:3,tipo:'fijo',nombre:'Bencina',     monto:80000, cat:'Transporte',     resp:101},
+  {id:4,tipo:'fijo',nombre:'Spotify',     monto:8250,  cat:'Suscripciones',  resp:101},
+  {id:5,tipo:'fijo',nombre:'Gym',         monto:35000, cat:'Salud',          resp:102},
+];
+// (el arranque real está al final del script, después de definir todo)
+
+// ══════════════════════════════════════════════════════════
+// SUPABASE — Persistencia en la nube
+// ══════════════════════════════════════════════════════════
+const SB_URL  = 'https://pfcltndheulmwysljmts.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmY2x0bmRoZXVsbXd5c2xqbXRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjEyNTksImV4cCI6MjA5NTEzNzI1OX0.ARIsqfa9QqpizLukUQ965qYDkqhVR37maZkIzezUFCs';
+const SB_ORIGIN = 'https://nicolasfgm.github.io';
+const SB_HDR  = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'resolution=merge-duplicates','Origin':SB_ORIGIN};
+
+// ── Utilidad base ────────────────────────────────────────
+async function sbFetch(path, opts={}){
+  const r = await fetch(SB_URL+'/rest/v1/'+path, {headers:SB_HDR, ...opts});
+  if(!r.ok){ const e=await r.text(); console.error('Supabase error:',e); throw new Error(e); }
+  return r.status===204 ? null : r.json();
+}
+const sbGet  = (t,q='')          => sbFetch(t+'?'+q);
+const sbUpsert = (t,body)        => sbFetch(t, {method:'POST', body:JSON.stringify(body)});
+const sbDelete = (t,q)           => sbFetch(t+'?'+q, {method:'DELETE'});
+const sbPatch  = (t,q,body)      => sbFetch(t+'?'+q, {method:'PATCH', body:JSON.stringify(body)});
+
+// ── Indicador de sincronización ──────────────────────────
+let _syncTimer = null;
+function showSyncing(){ setSyncBadge('⟳ Guardando…','var(--warn)'); }
+function showSynced(){  setSyncBadge('✓ Guardado','var(--accent-mid)'); }
+function showSyncErr(e){ setSyncBadge('✗ Error al guardar','var(--danger)'); console.error('Supabase save error:',e); }
+function setSyncBadge(txt, color){
+  let b=document.getElementById('syncBadge');
+  if(!b){ b=document.createElement('span'); b.id='syncBadge';
+    b.style.cssText='font-size:11px;margin-left:10px;transition:opacity .3s;';
+    const hr=document.querySelector('.header-right');
+    if(hr) hr.prepend(b); }
+  b.textContent=txt; b.style.color=color; b.style.opacity='1';
+  clearTimeout(_syncTimer);
+  if(txt.startsWith('✓')){ _syncTimer=setTimeout(()=>b.style.opacity='0', 3000); }
+}
+
+// ── CARGA desde Supabase ─────────────────────────────────
+async function loadFromSupabase(){
+  // Si estamos en file://, Supabase no puede conectar por CORS — modo local
+  if(location.protocol==='file:'){
+    console.warn('Modo local (file://): Supabase no disponible. Los datos no se guardarán en la nube.');
+    return false;
+  }
+  showSyncing();
+  try{
+    // Config (ingreso)
+    const cfg = await sbGet('config','select=clave,valor');
+    cfg.forEach(c=>{ if(c.clave==='ingreso'){ ingreso=Number(c.valor); document.getElementById('ingresoInput').value=ingreso; }});
+
+    // Responsables
+    const raws = await sbGet('responsables','select=*&order=id');
+    if(raws.length){
+      // Admin ya está en código; merge PINs y agrega manuales
+      const CODE_IDS = new Set(responsables.map(r=>r.id));
+      raws.forEach(r=>{ const local=responsables.find(x=>x.id==r.id); if(local) local.pin=r.pin||local.pin; });
+      raws.filter(r=>!CODE_IDS.has(r.id)).forEach(r=>responsables.push({id:r.id,nombre:r.nombre,iniciales:r.iniciales,color:r.color,pin:r.pin||'0000'}));
+    }
+
+    // Gastos fijos / eventuales
+    const graw = await sbGet('gastos','select=*&order=id');
+    if(graw.length) gastos = graw.map(g=>({id:g.id,tipo:g.tipo,nombre:g.nombre,monto:Number(g.monto),cat:g.cat,resp:g.resp,mes:g.mes}));
+
+    // Movimientos + divisiones
+    const movs  = await sbGet('movimientos','select=*');
+    const divs  = await sbGet('divisiones','select=*');
+    const divMap = {};
+    divs.forEach(d=>{ (divMap[d.mov_key]=divMap[d.mov_key]||[]).push({respId:String(d.resp_id),pct:Number(d.pct)}); });
+
+    movs.forEach(m=>{
+      const entry={
+        key:m.key, fecha:m.fecha, descBanco:m.desc_banco,
+        monto:Number(m.monto), cuotas_pend:Number(m.cuotas_pend),
+        valor_cuota:Number(m.valor_cuota), es_cuota:m.es_cuota,
+        concepto:m.concepto||'', abono:Number(m.abono)||0,
+        divisiones:divMap[m.key]||[], _estado:m.estado||'normal'
+      };
+      if(CARDS[m.card_id]) CARDS[m.card_id].set(m.key, entry);
+    });
+
+    showSynced();
+    console.log('Datos cargados desde Supabase');
+    return true;
+  }catch(e){ showSyncErr(); console.error('Error cargando desde Supabase:', e); return false; }
+}
+
+// ── SAVE individual por entidad (sin batching completo) ──
+let _appReady = false;
+function saveIfReady(fn){
+  if(!_appReady) return;
+  fn().catch(e=>showSyncErr(e));
+}
+
+// Guardar ingreso
+async function saveIngreso(){
+  await sbUpsert('config',{clave:'ingreso',valor:String(ingreso)});
+}
+
+// Guardar responsable (upsert)
+async function saveResponsable(r){
+  await sbUpsert('responsables',{id:r.id,nombre:r.nombre,iniciales:r.iniciales,color:r.color,pin:r.pin||'0000'});
+}
+
+// Eliminar responsable
+async function deleteResponsable(id){
+  await sbDelete('responsables',`id=eq.${id}`);
+}
+
+// Guardar gasto (upsert)
+async function saveGasto(g){
+  await sbUpsert('gastos',{id:g.id,tipo:g.tipo,nombre:g.nombre,monto:g.monto,cat:g.cat,resp:g.resp||null,mes:g.mes??null});
+}
+
+// Eliminar gasto
+async function deleteGasto(id){
+  await sbDelete('gastos',`id=eq.${id}`);
+}
+
+// Guardar movimiento + sus divisiones (upsert atómico)
+async function saveMovimiento(m){
+  await sbUpsert('movimientos',{
+    key:m.key, card_id:Object.keys(CARDS).find(cid=>CARDS[cid].has(m.key)),
+    fecha:m.fecha, desc_banco:m.descBanco, monto:m.monto,
+    cuotas_pend:m.cuotas_pend, valor_cuota:m.valor_cuota, es_cuota:m.es_cuota,
+    concepto:m.concepto, abono:m.abono||0, estado:m._estado||'normal',
+    updated_at:new Date().toISOString()
+  });
+  // Divisiones: borrar las viejas e insertar las nuevas
+  await sbDelete('divisiones',`mov_key=eq.${encodeURIComponent(m.key)}`);
+  if(m.divisiones.length){
+    await sbUpsert('divisiones', m.divisiones.map(d=>({mov_key:m.key,resp_id:Number(d.respId),pct:Number(d.pct)})));
+  }
+}
+
+// Guardar múltiples movimientos (al importar Excel)
+async function saveMovimientos(movList){
+  if(!movList.length) return;
+  // Upsert en lotes de 50
+  for(let i=0;i<movList.length;i+=50){
+    const batch=movList.slice(i,i+50);
+    await sbUpsert('movimientos', batch.map(m=>({
+      key:m.key, card_id:Object.keys(CARDS).find(cid=>CARDS[cid].has(m.key))||'cmr',
+      fecha:m.fecha, desc_banco:m.descBanco, monto:m.monto,
+      cuotas_pend:m.cuotas_pend, valor_cuota:m.valor_cuota, es_cuota:m.es_cuota,
+      concepto:m.concepto||'', abono:m.abono||0, estado:m._estado||'normal',
+      updated_at:new Date().toISOString()
+    })));
+  }
+}
+
+// ── Hooks sobre funciones existentes ────────────────────
+// render() NO guarda automáticamente — demasiado frecuente.
+// Solo guardan las acciones explícitas del usuario.
+const _render_orig = render;
+render = function(){ _render_orig(); };
+
+// saveEdit ya existe — le añadimos persistencia
+const _saveEdit_orig = saveEdit;
+saveEdit = function(cardId,key){
+  _saveEdit_orig(cardId,key);
+  const m = CARDS[cardId].get(key);
+  if(m) saveIfReady(async()=>{ showSyncing(); await saveMovimiento(m); showSynced(); });
+};
+
+// clearEntry
+const _clearEntry_orig = clearEntry;
+clearEntry = function(cardId,key){
+  _clearEntry_orig(cardId,key);
+  const m = CARDS[cardId].get(key);
+  if(m) saveIfReady(async()=>{ showSyncing(); await saveMovimiento(m); showSynced(); });
+};
+
+// mergeCARD (importar Excel) → guardar todos los movimientos nuevos/actualizados
+const _mergeCARD_orig = mergeCARD;
+mergeCARD = function(db,rows,markNew,isBCI){
+  const result = _mergeCARD_orig(db,rows,markNew,isBCI);
+  if(result.added>0||result.updated>0){
+    saveIfReady(async()=>{
+      showSyncing();
+      const changed=[...db.values()].filter(m=>m._estado==='new'||m._estado==='upd');
+      await saveMovimientos(changed);
+      showSynced();
+    });
+  }
+  return result;
+};
+
+// addGasto / removeGasto — los interceptamos en las funciones UI
+const _addGasto_orig = addGasto;
+addGasto = function(tipo){
+  const antes = gastos.length;
+  _addGasto_orig(tipo);
+  if(gastos.length>antes){
+    const nuevo = gastos[gastos.length-1];
+    saveIfReady(async()=>{ showSyncing(); await saveGasto(nuevo); showSynced(); });
+  }
+};
+
+const _removeGasto_orig = removeGasto;
+removeGasto = function(id){
+  _removeGasto_orig(id);
+  saveIfReady(async()=>{ showSyncing(); await deleteGasto(id); showSynced(); });
+};
+
+// addResponsable / removeResponsable
+const _addResp_orig = addResponsable;
+addResponsable = function(){
+  const antes = responsables.length;
+  _addResp_orig();
+  if(responsables.length>antes){
+    const nuevo = responsables[responsables.length-1];
+    saveIfReady(async()=>{ showSyncing(); await saveResponsable(nuevo); showSynced(); });
+  }
+};
+
+const _removeResp_orig = removeResponsable;
+removeResponsable = function(id){
+  _removeResp_orig(id);
+  saveIfReady(async()=>{ showSyncing(); await deleteResponsable(id); showSynced(); });
+};
+
+// savePIN
+const _savePIN_orig = savePIN;
+savePIN = function(respId){
+  _savePIN_orig(respId);
+  const r = getResp(respId);
+  if(r) saveIfReady(async()=>{ showSyncing(); await saveResponsable(r); showSynced(); });
+};
+
+// setIngreso — guarda cuando el usuario presiona "Actualizar ingreso"
+const _setIngreso_orig = setIngreso;
+setIngreso = function(){
+  _setIngreso_orig();
+  saveIfReady(async()=>{ showSyncing(); await saveIngreso(); showSynced(); });
+};
+
+// Reset desde consola: resetNFGM() borra todo de Supabase y recarga
+window.resetNFGM = async function(){
+  if(!confirm('¿Seguro? Esto borra TODOS los datos de Supabase y vuelve al estado inicial.')) return;
+  showSyncing();
+  await sbDelete('divisiones','id=gt.0');
+  await sbDelete('movimientos','key=neq.__placeholder__');
+  await sbDelete('gastos','id=gt.0');
+  await sbDelete('responsables',`id=neq.${ADMIN_ID}`);
+  await sbPatch('config','clave=eq.ingreso',{valor:'1800000'});
+  showSynced();
+  location.reload();
+};
+// ══════════════════════════════════════════════════════════
+// SISTEMA DE LOGIN Y SESIÓN
+// ══════════════════════════════════════════════════════════
+
+// PIN del admin (Nicolás Galindo, id:101). Configurable aquí.
+const ADMIN_ID = 101;
+const ADMIN_PIN = '1234'; // ← Cambia este PIN en el archivo
+
+// Los PINs de los responsables se guardan en el array de responsables.
+// Se agregan automáticamente al crear un responsable (pin:'0000' por defecto).
+// El admin puede cambiarlos desde la pestaña Responsables.
+
+let currentSession = null; // { respId, isAdmin }
+
+// ── Inicializar PINs si no existen ──────────────────────
+// Solo asigna PIN por defecto si el responsable no tiene uno aún.
+// Nunca sobreescribe un PIN ya guardado.
+function initPINs(){
+  responsables.forEach(r=>{
+    if(!r.pin) r.pin = r.id===ADMIN_ID ? ADMIN_PIN : '0000';
+  });
+}
+
+// ── Construir pantalla de login ──────────────────────────
+function buildLoginScreen(){
+  initPINs();
+  const sel=document.getElementById('loginNameSelect');
+  sel.innerHTML='<option value="">— Selecciona tu nombre —</option>'+
+    responsables.map(r=>`<option value="${r.id}">${r.iniciales} · ${r.nombre}</option>`).join('');
+}
+
+function loginConfirmName(){
+  const sel=document.getElementById('loginNameSelect');
+  const respId=parseInt(sel.value);
+  if(!respId){sel.focus();return;}
+  loginSelectUser(respId);
+}
+
+function loginSelectUser(respId){
+  _loginSelectedId = respId;
+  _pinBuffer = '';
+  const r = getResp(respId);
+  document.getElementById('loginWhoLabel').textContent = `Hola, ${r.nombre}`;
+  document.getElementById('loginStep1').style.display='none';
+  document.getElementById('loginStep2').style.display='block';
+  document.getElementById('pinError').textContent='';
+  syncPinInput();
+  updatePinUI();
+  // Dar foco al input oculto para capturar teclado físico
+  setTimeout(()=>focusPinInput(), 80);
+}
+
+function focusPinInput(){
+  const inp=document.getElementById('pinRealInput');
+  if(inp) inp.focus();
+}
+
+// Sincroniza el input oculto con _pinBuffer
+function syncPinInput(){
+  const inp=document.getElementById('pinRealInput');
+  if(inp) inp.value=_pinBuffer;
+}
+
+// Llamado cuando el usuario escribe en el input oculto (teclado físico)
+function onPinInput(val){
+  _pinBuffer=val.replace(/\D/g,'').substring(0,4);
+  syncPinInput();
+  updatePinUI();
+}
+
+// Enter en teclado físico → intentar acceder si hay 4 dígitos
+function onPinKeydown(e){
+  if(e.key==='Enter'&&_pinBuffer.length===4) pinOK();
+}
+
+// Teclado en pantalla
+function pinKey(d){
+  if(_pinBuffer.length>=4) return;
+  _pinBuffer+=d;
+  syncPinInput();
+  updatePinUI();
+  focusPinInput();
+}
+
+function pinBack(){
+  _pinBuffer=_pinBuffer.slice(0,-1);
+  syncPinInput();
+  updatePinUI();
+  focusPinInput();
+}
+
+// Actualiza los 4 asteriscos y el botón flecha →
+function updatePinUI(){
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('dot'+i);
+    if(!dot) continue;
+    dot.classList.remove('filled','error');
+    if(i<_pinBuffer.length) dot.classList.add('filled');
+  }
+  const btn=document.getElementById('pinOKBtn');
+  if(btn){
+    const ready=_pinBuffer.length===4;
+    btn.disabled=!ready;
+    if(ready){
+      btn.style.background='var(--accent)';
+      btn.style.color='#fff';
+      btn.style.borderColor='var(--accent)';
+      btn.style.cursor='pointer';
+      btn.style.transform='scale(1.08)';
+    } else {
+      btn.style.background='var(--surface2)';
+      btn.style.color='var(--text-muted)';
+      btn.style.borderColor='var(--border)';
+      btn.style.cursor='not-allowed';
+      btn.style.transform='scale(1)';
+    }
+  }
+}
+
+function pinOK(){
+  if(!_loginSelectedId) return;
+  const r=getResp(_loginSelectedId);
+  if(!r) return;
+  const expected = r.pin || '0000';
+  if(_pinBuffer===expected){
+    // Login exitoso
+    currentSession={respId:r.id, isAdmin:r.id===ADMIN_ID};
+    document.getElementById('loginScreen').style.display='none';
+    if(currentSession.isAdmin){
+      // Admin: restaurar visibilidad y mostrar app completa
+      document.querySelector('header').style.display='flex';
+      document.getElementById('respView').style.display='none';
+      // Activar dashboard (showPage limpia style.display internamente)
+      const dashBtn=document.querySelector('.nav-tab');
+      if(dashBtn) showPage('dashboard',dashBtn);
+    } else {
+      // Responsable: mostrar solo su vista
+      document.querySelector('header').style.display='none';
+      document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+      showRespView(r);
+    }
+  } else {
+    // PIN incorrecto
+    document.getElementById('pinError').textContent='PIN incorrecto. Intenta nuevamente.';
+    for(let i=0;i<4;i++) document.getElementById('dot'+i).classList.add('error');
+    setTimeout(()=>{
+      _pinBuffer='';
+      syncPinInput();
+      updatePinUI();
+      document.getElementById('pinError').textContent='';
+      focusPinInput();
+    }, 1200);
+  }
+}
+
+function loginBack(){
+  _loginSelectedId=null; _pinBuffer='';
+  syncPinInput();
+  updatePinUI();
+  document.getElementById('loginStep1').style.display='block';
+  document.getElementById('loginStep2').style.display='none';
+  document.getElementById('pinError').textContent='';
+}
+function logout(){
+  currentSession=null; _pinBuffer=''; _loginSelectedId=null;
+  document.getElementById('respView').style.display='none';
+  document.querySelector('header').style.display='none';
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.getElementById('loginStep1').style.display='block';
+  document.getElementById('loginStep2').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  buildLoginScreen();
+}
+
+// ── Vista de responsable ─────────────────────────────────
+function showRespView(r){
+  document.getElementById('respView').style.display='block';
+  document.getElementById('respViewName').innerHTML=
+    `<span style="background:${r.color}22;color:${r.color};padding:3px 10px;border-radius:9px;font-size:12px;">${r.iniciales}</span> ${r.nombre}`;
+
+  // Recopilar todos los movimientos donde este responsable tiene una parte
+  const misMov=[];
+  ['cmr','bci'].forEach(cardId=>{
+    CARDS[cardId].forEach(m=>{
+      if(m._estado==='done') return;
+      const div=m.divisiones.find(d=>d.respId==r.id);
+      if(!div) return;
+      const neto=Math.max(0,m.valor_cuota-(m.abono||0));
+      const miCuota=neto*div.pct/100;
+      misMov.push({
+        fecha:m.fecha,
+        concepto:m.concepto||m.descBanco,
+        cardId,
+        cuotas_pend:m.cuotas_pend,
+        miCuota,
+        pct:div.pct,
+        es_cuota:m.es_cuota,
+        enPeriodo:enPeriodoActual(cardId,m.fecha),
+      });
+    });
+  });
+  // Gastos fijos asignados a este responsable
+  gastos.forEach(g=>{
+    if(g.resp!=r.id) return;
+    if(g.tipo==='fijo') misMov.push({fecha:'—',concepto:g.nombre,cardId:'Fijo',cuotas_pend:'∞',miCuota:g.monto,pct:100,es_cuota:false,enPeriodo:true});
+    else if(g.tipo==='eventual') misMov.push({fecha:'—',concepto:g.nombre,cardId:'Eventual',cuotas_pend:'1',miCuota:g.monto,pct:100,es_cuota:false,enPeriodo:false});
+  });
+
+  misMov.sort((a,b)=>b.miCuota-a.miCuota);
+
+  // KPIs
+  const totalMes=misMov.filter(m=>m.enPeriodo||m.cardId==='Fijo').reduce((s,m)=>s+m.miCuota,0);
+  const totalCuotas=misMov.filter(m=>m.es_cuota).reduce((s,m)=>s+m.miCuota,0);
+  document.getElementById('respViewKPIs').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Mi total mes actual</div><div class="kpi-value danger">${fmt(totalMes)}</div><div class="kpi-sub">Fijos + cuotas del período</div></div>
+    <div class="kpi-card"><div class="kpi-label">Mi compromiso en cuotas</div><div class="kpi-value warning">${fmt(totalCuotas)}</div><div class="kpi-sub">${misMov.filter(m=>m.es_cuota).length} movimientos activos</div></div>
+    <div class="kpi-card"><div class="kpi-label">Período actual</div><div class="kpi-value safe">${misMov.filter(m=>m.enPeriodo&&m.es_cuota).length}</div><div class="kpi-sub">movimientos en este corte</div></div>`;
+
+  // Tabla
+  const tbody=document.getElementById('respViewTbody');
+  if(!misMov.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No tienes movimientos asignados aún.</td></tr>';return;}
+  tbody.innerHTML=misMov.map(m=>{
+    const cardLabel=m.cardId==='cmr'?'CMR Falabella':m.cardId==='bci'?'BCI Visa':m.cardId;
+    const periodobadge=m.enPeriodo&&m.es_cuota?'<span class="badge-periodo">PERÍODO</span>':'';
+    return`<tr>
+      <td style="white-space:nowrap;">${m.fecha}${periodobadge}</td>
+      <td style="font-weight:500;">${m.concepto}</td>
+      <td><span style="font-size:10px;background:var(--surface2);color:var(--text-muted);padding:2px 6px;border-radius:4px;">${cardLabel}</span></td>
+      <td style="text-align:center;">${m.cuotas_pend}</td>
+      <td class="td-red" style="font-weight:600;">${fmt(m.miCuota)}/m</td>
+      <td style="text-align:center;color:var(--text-muted);font-size:12px;">${m.pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Panel de PINs en pestaña Responsables (solo admin) ──
+function renderPinManager(){
+  const container=document.getElementById('pinManager');
+  if(!container||!currentSession?.isAdmin) return;
+  container.innerHTML=`
+    <div class="table-header" style="border-top:1px solid var(--border);">Gestión de PINs</div>
+    <div style="overflow-x:auto;">
+      <table><thead><tr><th>Responsable</th><th>PIN actual</th><th>Nuevo PIN (4 dígitos)</th><th></th></tr></thead>
+      <tbody>${responsables.map(r=>`
+        <tr>
+          <td><span class="badge-resp" style="background:${r.color}22;color:${r.color};margin-right:5px;">${r.iniciales}</span>${r.nombre}${r.id===ADMIN_ID?' 👑':''}</td>
+          <td style="font-family:monospace;letter-spacing:3px;">${r.pin||'0000'}</td>
+          <td><input type="number" id="newpin-${r.id}" placeholder="0000" maxlength="4" style="width:80px;font-size:13px;padding:5px;text-align:center;"></td>
+          <td><button class="btn-sm" style="background:var(--accent);color:#fff;" onclick="savePIN(${r.id})">Guardar</button></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+function savePIN(respId){
+  const inp=document.getElementById('newpin-'+respId);
+  if(!inp)return;
+  const val=String(inp.value).trim().padStart(4,'0').substring(0,4);
+  if(!/^\d{4}$/.test(val)){alert('El PIN debe ser exactamente 4 dígitos.');return;}
+  const r=getResp(respId);
+  if(r) r.pin=val;
+  inp.value='';
+  renderPinManager();
+  alert(`PIN de ${r?.nombre} actualizado a: ${val}`);
+}
+
+// ── Añadir campo PIN al agregar responsable ──────────────
+// (el PIN se asigna directamente en addResponsable, sin wrapper)
+
+// showPage ya limpia style.display inline — no se necesita override adicional
+
+// ══════════════════════════════════════════════════════════
+// ARRANQUE ASÍNCRONO — carga datos desde Supabase antes de mostrar login
+// ══════════════════════════════════════════════════════════
+(async function boot(){
+  const loginScreen = document.getElementById('loginScreen');
+  const spinDiv = document.createElement('div');
+  spinDiv.style.cssText='text-align:center;padding:1.5rem 0;font-size:13px;color:var(--text-muted);';
+
+  if(location.protocol==='file:'){
+    // Modo local — sin conexión a Supabase
+    spinDiv.innerHTML='<div style="font-size:11px;background:var(--warn-light);color:var(--warn);padding:6px 12px;border-radius:6px;border:1px solid var(--warn);display:inline-block;">⚠️ Modo local — los datos no se guardan en la nube.<br>Sube el archivo a GitHub Pages para usar Supabase.</div>';
+    loginScreen.querySelector('div')?.insertAdjacentElement('afterend', spinDiv);
+    setTimeout(()=>spinDiv.remove(), 4000);
+  } else {
+    spinDiv.innerHTML='<div style="font-size:1.5rem;margin-bottom:.5rem;">⟳</div>Conectando con Supabase…';
+    loginScreen.querySelector('div')?.insertAdjacentElement('afterend', spinDiv);
+    await loadFromSupabase();
+    spinDiv.remove();
+  }
+
+  renderRespSelects();
+  _render_orig();
+  initPINs();
+  buildLoginScreen();
+  _appReady = true;
+})();
+
+// ── SheetJS ──────────────────────────────────────────────
+const s=document.createElement('script');
+s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+document.head.appendChild(s);
+</script>
+</body>
+</html>
