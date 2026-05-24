@@ -109,6 +109,9 @@ tr:hover td{background:var(--surface2);}
 .badge-resp{display:inline-block;font-size:10px;padding:2px 6px;border-radius:9px;font-weight:600;}
 .badge-new{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#FEF3E2;color:#D4850A;margin-left:4px;vertical-align:middle;}
 .badge-upd{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#EBF5FB;color:#1A5276;margin-left:4px;vertical-align:middle;}
+.badge-por-confirmar{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--warn-light);color:var(--warn);margin-left:4px;vertical-align:middle;}
+.toggle-proyeccion{display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;padding:2px 7px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);transition:all .15s;white-space:nowrap;}
+.toggle-proyeccion.activo{background:var(--accent-light);border-color:var(--accent-mid);color:var(--accent-mid);font-weight:600;}
 .badge-done{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--surface2);color:var(--text-muted);margin-left:4px;vertical-align:middle;}
 .import-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;}
 .bci-badge{background:var(--bci-light);color:var(--bci);}
@@ -379,6 +382,7 @@ tr:hover td{background:var(--surface2);}
       <button class="filter-btn" onclick="filterCard('cmr','sin-conc',this)">Sin concepto</button>
       <button class="filter-btn" onclick="filterCard('cmr','sin-resp',this)">Sin responsable</button>
       <button class="filter-btn" onclick="filterCard('cmr','nuevos',this)">Nuevos/actualizados</button>
+      <button class="filter-btn" onclick="filterCard('cmr','por-confirmar',this)">⏳ Por confirmar</button>
       <button class="filter-btn" onclick="filterCard('cmr','periodo',this)">Período actual (≤día 19)</button>
     </div>
     <div class="table-card" style="margin-bottom:1.25rem;">
@@ -501,7 +505,10 @@ const CARDS = {
 };
 
 function cardKey(fecha,desc,monto){
-  return `${String(fecha).substring(0,10)}|${String(desc).toUpperCase().trim()}|${Math.round(Number(monto))}`;
+  // Normalizar descripción para que con y sin asterisco generen la misma clave:
+  // "COMPRA PEDIDOS YA*" y "COMPRA PEDIDOS YA" → misma clave
+  const descNorm = String(desc).toUpperCase().trim().replace(/\*+$/, '').trim();
+  return `${String(fecha).substring(0,10)}|${descNorm}|${Math.round(Number(monto))}`;
 }
 
 function rowDomId(cardId,key){
@@ -511,30 +518,36 @@ function rowDomId(cardId,key){
 function mergeCARD(db,rows,markNew=false,isBCI=false){
   let added=0,updated=0;
   rows.forEach(r=>{
-    // Para BCI usamos la descripción normalizada como parte de la clave,
-    // así "AUFBAU PLAZA OESTE SAN NC 05-24" y "AUFBAU PLAZA OESTE 2 TASA INT." 
-    // se resuelven al mismo registro cuando el monto coincide.
     const descForKey = isBCI ? (r.descNorm||normalizeBCIDesc(r.descBanco)) : r.descBanco;
     const key=cardKey(r.fecha, descForKey, r.monto);
+    // Detectar si viene con asterisco (por confirmar) — solo CMR
+    const esPorConfirmar = !isBCI && /\*+\s*$/.test(String(r.descBanco));
     const ex=db.get(key);
     if(!ex){
       db.set(key,{key,fecha:String(r.fecha).substring(0,10),descBanco:r.descBanco,
         monto:Number(r.monto),cuotas_pend:Number(r.cuotas_pend)||0,
         valor_cuota:Number(r.valor_cuota)||Number(r.monto),
         es_cuota:Number(r.cuotas_pend)>0,concepto:'',divisiones:[],abono:0,
+        _por_confirmar: esPorConfirmar,
+        incluir_proyeccion: false,   // por defecto no incluir hasta confirmar
+        cuotas_estimadas: 1,         // cuotas estimadas si se decide incluir
         _estado:markNew?'new':'normal'});
       added++;
     } else {
-      // Preservar concepto y divisiones del usuario.
-      // Actualizar datos bancarios.
       const nc=Number(r.cuotas_pend)||0;
-      const changed=ex.cuotas_pend!==nc;
-      // Actualizar descripción banco si vino versión más limpia (facturada)
-      if(r.descBanco&&r.descBanco.length<ex.descBanco.length) ex.descBanco=r.descBanco;
+      const changed=ex.cuotas_pend!==nc || ex.es_cuota!==(nc>0);
+      const descNueva=r.descBanco.replace(/\*+$/,'').trim();
+      const descVieja=ex.descBanco.replace(/\*+$/,'').trim();
+      if(descNueva.length>0 && descNueva!==descVieja) ex.descBanco=descNueva;
       ex.cuotas_pend=nc;
       ex.valor_cuota=Number(r.valor_cuota)||Number(r.monto);
       ex.es_cuota=nc>0;
-      if(nc===0&&!ex.es_cuota) ex._estado='done';
+      // Si ya no tiene asterisco → se confirmó, limpiar estado por_confirmar
+      if(!esPorConfirmar && ex._por_confirmar){
+        ex._por_confirmar=false;
+        ex.incluir_proyeccion=false; // ya no necesita el toggle manual
+      }
+      if(nc===0&&ex.es_cuota===false&&changed) ex._estado='done';
       else if(changed&&markNew){ex._estado='upd';updated++;}
     }
   });
@@ -544,25 +557,35 @@ function mergeCARD(db,rows,markNew=false,isBCI=false){
 function cardTotalMes(cardId,mesIdx){
   let t=0;
   CARDS[cardId].forEach(m=>{
-    if(m.es_cuota&&m._estado!=='done'&&mesIdx<m.cuotas_pend){
+    if(m._estado==='done') return;
+    if(m._por_confirmar){
+      // Solo sumar si el usuario marcó "incluir en proyección"
+      if(m.incluir_proyeccion && mesIdx<(m.cuotas_estimadas||1)){
+        t+=Math.max(0,m.valor_cuota-(m.abono||0));
+      }
+    } else if(m.es_cuota && mesIdx<m.cuotas_pend){
+      t+=Math.max(0,m.valor_cuota-(m.abono||0));
+    } else if(!m.es_cuota && mesIdx===0){
+      // contado facturado: solo mes actual
       t+=Math.max(0,m.valor_cuota-(m.abono||0));
     }
   });
   return t;
 }
 
-// División: cuota mensual de un responsable en un movimiento
-function divMonto(m,respId){
-  const d=m.divisiones.find(d=>d.respId==respId);
-  return d?(m.valor_cuota*d.pct/100):0;
-}
-function divPctTotal(m){return m.divisiones.reduce((s,d)=>s+d.pct,0);}
-
 // Total cuota de un responsable en una tarjeta para un mes dado
 function cardRespMes(cardId,respId,mesIdx){
   let t=0;
   CARDS[cardId].forEach(m=>{
-    if(m.es_cuota&&m._estado!=='done'&&mesIdx<m.cuotas_pend) t+=divMonto(m,respId);
+    if(m._estado==='done') return;
+    const d=m.divisiones.find(d=>d.respId==respId);
+    if(!d) return;
+    const neto=Math.max(0,m.valor_cuota-(m.abono||0));
+    if(m._por_confirmar){
+      if(m.incluir_proyeccion && mesIdx<(m.cuotas_estimadas||1)) t+=neto*d.pct/100;
+    } else if(m.es_cuota && mesIdx<m.cuotas_pend){
+      t+=neto*d.pct/100;
+    }
   });
   return t;
 }
@@ -907,6 +930,21 @@ function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-b
 // ══════════════════════════════════════════════════════════
 const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
 
+// ── Toggle incluir en proyección (movimientos por confirmar) ──
+function toggleProyeccion(cardId,key){
+  const m=CARDS[cardId].get(key);if(!m||!m._por_confirmar)return;
+  m.incluir_proyeccion=!m.incluir_proyeccion;
+  renderCardTable(cardId);renderCardKPIs(cardId);renderCardCharts(cardId);render();
+  saveIfReady(async()=>{ showSyncing(); await saveMovimiento(m); showSynced(); });
+}
+
+function setCuotasEstimadas(cardId,key,val){
+  const m=CARDS[cardId].get(key);if(!m)return;
+  m.cuotas_estimadas=Math.max(1,parseInt(val)||1);
+  render();
+  saveIfReady(async()=>{ showSyncing(); await saveMovimiento(m); showSynced(); });
+}
+
 function filterCard(cardId,f,btn){
   cardFilters[cardId]=f;
   document.querySelectorAll(`#page-${cardId} .filter-btn`).forEach(b=>b.classList.remove('active'));
@@ -987,6 +1025,7 @@ function renderCardTable(cardId){
   else if(f==='sin-conc')entries=entries.filter(m=>m._estado!=='done'&&(!m.concepto||!m.concepto.trim()));
   else if(f==='sin-resp')entries=entries.filter(m=>m._estado!=='done'&&m.es_cuota&&!m.divisiones.length);
   else if(f==='nuevos')  entries=entries.filter(m=>m._estado==='new'||m._estado==='upd');
+  else if(f==='por-confirmar') entries=entries.filter(m=>m._por_confirmar);
   else if(f==='periodo') entries=entries.filter(m=>enPeriodoActual(cardId,m.fecha));
   const ord={new:0,upd:1,normal:2,done:3};
   entries.sort((a,b)=>ord[a._estado]-ord[b._estado]||b.fecha.localeCompare(a.fecha));
@@ -994,6 +1033,7 @@ function renderCardTable(cardId){
   const tbody=document.getElementById(cardId+'Tbody');
   tbody.innerHTML=entries.map(m=>{
     const badge=m._estado==='new'?'<span class="badge-new">NUEVO</span>':m._estado==='upd'?'<span class="badge-upd">ACTUALIZ.</span>':m._estado==='done'?'<span class="badge-done">TERMINADO</span>':'';
+    const porConf=m._por_confirmar?'<span class="badge-por-confirmar">⏳ Por confirmar</span>':'';
     const periodobadge=enPeriodoActual(cardId,m.fecha)?'<span class="badge-periodo">PERÍODO ACT.</span>':'';
     const concCell=m.concepto?`<span class="concepto-val">${m.concepto}</span>`:`<span style="color:var(--text-muted);font-size:11px;font-style:italic;">—</span>`;
     const rowClass=m._estado==='new'?'row-new':m._estado==='upd'?'row-upd':m._estado==='done'?'row-done':'';
@@ -1006,14 +1046,26 @@ function renderCardTable(cardId){
           : `<span class="td-red">${fmt(m.valor_cuota)}/m</span>`)
       : fmt(m.valor_cuota);
     return`<tr id="${domId}" class="${rowClass}">
-      <td style="white-space:nowrap;">${m.fecha}${badge}${periodobadge}</td>
+      <td style="white-space:nowrap;">${m.fecha}${badge}${porConf}${periodobadge}</td>
       <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${m.descBanco}">${m.descBanco}</td>
       <td>${concCell}</td>
       <td>${divPillsHTML(m)}</td>
       <td style="white-space:nowrap;">${fmt(m.monto)}</td>
       <td>${m.es_cuota?m.cuotas_pend:'—'}</td>
       <td style="white-space:nowrap;">${cuotaCell}</td>
-      <td>${m.es_cuota?'<span style="font-size:10px;background:var(--info-light);color:var(--info);padding:1px 5px;border-radius:3px;">Cuotas</span>':'<span style="font-size:10px;background:var(--surface2);color:var(--text-muted);padding:1px 5px;border-radius:3px;">Contado</span>'}</td>
+      <td>${m._por_confirmar
+        ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+            <button class="toggle-proyeccion${m.incluir_proyeccion?' activo':''}"
+              onclick='toggleProyeccion(${jsCard},${jsKey})'>
+              ${m.incluir_proyeccion?'✓ En proyección':'+ Incluir'}
+            </button>
+            ${m.incluir_proyeccion?`<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
+              Cuotas est.: <input type="number" min="1" value="${m.cuotas_estimadas||1}"
+                style="width:44px;font-size:11px;padding:2px 4px;text-align:center;"
+                onchange='setCuotasEstimadas(${jsCard},${jsKey},this.value)'>
+            </div>`:''}
+           </div>`
+        : m.es_cuota?'<span style="font-size:10px;background:var(--info-light);color:var(--info);padding:1px 5px;border-radius:3px;">Cuotas</span>':'<span style="font-size:10px;background:var(--surface2);color:var(--text-muted);padding:1px 5px;border-radius:3px;">Contado</span>'}</td>
       <td><button class="btn-edit" onclick='openEdit(${jsCard},${jsKey})'>✏️</button></td>
     </tr>`;
   }).join('');
@@ -1441,7 +1493,10 @@ async function loadFromSupabase(){
         monto:Number(m.monto), cuotas_pend:Number(m.cuotas_pend),
         valor_cuota:Number(m.valor_cuota), es_cuota:m.es_cuota,
         concepto:m.concepto||'', abono:Number(m.abono)||0,
-        divisiones:divMap[m.key]||[], _estado:m.estado||'normal'
+        divisiones:divMap[m.key]||[], _estado:m.estado||'normal',
+        _por_confirmar:m.por_confirmar||false,
+        incluir_proyeccion:m.incluir_proyeccion||false,
+        cuotas_estimadas:Number(m.cuotas_estimadas)||1,
       };
       if(CARDS[m.card_id]) CARDS[m.card_id].set(m.key, entry);
     });
@@ -1496,6 +1551,9 @@ async function saveMovimiento(m){
     fecha:m.fecha, desc_banco:m.descBanco, monto:m.monto,
     cuotas_pend:m.cuotas_pend, valor_cuota:m.valor_cuota, es_cuota:m.es_cuota,
     concepto:m.concepto, abono:m.abono||0, estado:m._estado||'normal',
+    por_confirmar:m._por_confirmar||false,
+    incluir_proyeccion:m.incluir_proyeccion||false,
+    cuotas_estimadas:m.cuotas_estimadas||1,
     updated_at:new Date().toISOString()
   });
   // Divisiones: borrar las viejas e insertar las nuevas
