@@ -486,6 +486,10 @@ tr:hover td{background:var(--surface2);}
 let ingreso=1800000, gastos=[], responsables=[], activePeriod=6;
 const cardFilters={cmr:'todos',bci:'todos'};
 
+// ── Constantes de administración (deben ir antes que cualquier función que las use) ──
+const ADMIN_ID  = 101;
+const ADMIN_PIN = '1234'; // PIN por defecto del admin — se puede cambiar desde la UI
+
 // ── CARD DB ──────────────────────────────────────────────
 // Cada tarjeta tiene su propio Map<key,entry>.
 // entry = { key, fecha, descBanco, monto, cuotas_pend, valor_cuota, es_cuota,
@@ -1625,10 +1629,6 @@ window.resetNFGM = async function(){
 // ══════════════════════════════════════════════════════════
 // SISTEMA DE LOGIN Y SESIÓN
 // ══════════════════════════════════════════════════════════
-
-// PIN del admin (Nicolás Galindo, id:101). Configurable aquí.
-const ADMIN_ID = 101;
-const ADMIN_PIN = '1234'; // ← Cambia este PIN en el archivo
 
 // Los PINs de los responsables se guardan en el array de responsables.
 // Se agregan automáticamente al crear un responsable (pin:'0000' por defecto).
