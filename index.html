@@ -267,6 +267,7 @@ tr:hover td{background:var(--surface2);}
       <button class="nav-tab active" onclick="showPage('dashboard',this)">Dashboard</button>
       <button class="nav-tab" onclick="showPage('cmr',this)">CMR Falabella</button>
       <button class="nav-tab" onclick="showPage('bci',this)">BCI Visa</button>
+      <button class="nav-tab" id="tab-analisis" style="display:none;" onclick="showPage('analisis',this)">📊 Análisis</button>
       <button class="nav-tab" onclick="showPage('responsables',this)">Responsables</button>
     </nav>
     <div class="header-meta" id="headerDate"></div>
@@ -455,6 +456,77 @@ tr:hover td{background:var(--surface2);}
       <div class="chart-card"><div class="chart-title">Top 10 por cuota</div><div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">🟢 con responsable · 🔴 sin responsable</div><div style="position:relative;height:280px;"><canvas id="bciTopChart"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Carga próximos 12 meses</div><div style="position:relative;height:280px;"><canvas id="bciCargaChart"></canvas></div></div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ ANÁLISIS (solo admin) ══════════ -->
+<div class="page" id="page-analisis">
+  <div style="padding:1.75rem;width:100%;overflow-y:auto;">
+
+    <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:1.6rem;">Análisis general</h2>
+      <span style="font-size:12px;color:var(--text-muted);">Vista exclusiva admin · todo el historial disponible</span>
+    </div>
+
+    <!-- ── SECCIÓN 1: Cuánto debe cada persona este mes ── -->
+    <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:2px solid var(--accent-mid);">
+      Deuda mensual por persona
+    </div>
+    <div id="anKpiPersonas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:1.5rem;"></div>
+
+    <!-- Tabla detalle por persona -->
+    <div class="table-card" style="margin-bottom:2rem;">
+      <div class="table-header">Desglose por persona — mes actual</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Persona</th><th>G. Fijos</th><th>CMR cuotas</th><th>BCI cuotas</th>
+            <th>Eventuales</th><th>Total mes</th><th>% del ingreso</th>
+          </tr></thead>
+          <tbody id="anTbodyPersonas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN 2: Evolución de cuotas ── -->
+    <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:2px solid var(--accent-mid);">
+      Evolución de carga en cuotas (próximos 12 meses)
+    </div>
+    <div class="chart-card" style="margin-bottom:.75rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem;">
+        <div style="font-size:12px;color:var(--text-muted);">Muestra cuánto pagará cada persona en cuotas mes a mes</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="anEvolucionLegend"></div>
+      </div>
+      <div style="position:relative;height:320px;"><canvas id="anEvolucionChart"></canvas></div>
+    </div>
+
+    <!-- Tabla evolución -->
+    <div class="table-card" style="margin-bottom:2rem;overflow-x:auto;">
+      <div class="table-header">Cuotas mes a mes por persona (CLP)</div>
+      <div style="overflow-x:auto;"><table id="anEvolucionTable"></table></div>
+    </div>
+
+    <!-- ── SECCIÓN 3: Distribución por categoría ── -->
+    <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:2px solid var(--accent-mid);">
+      Distribución por categoría
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:2rem;">
+      <div class="chart-card">
+        <div class="chart-title">Gastos fijos por categoría</div>
+        <div style="position:relative;height:260px;"><canvas id="anCatFijosChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cuotas activas por categoría (CMR)</div>
+        <div style="position:relative;height:260px;"><canvas id="anCatCMRChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── SECCIÓN 4: Top movimientos por persona ── -->
+    <div style="font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:2px solid var(--accent-mid);">
+      Top movimientos CMR por persona (cuota mensual)
+    </div>
+    <div id="anTopPersonas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;margin-bottom:2rem;"></div>
+
   </div>
 </div>
 
@@ -780,15 +852,222 @@ function addBCIManual(){
 // NAVEGACIÓN
 // ══════════════════════════════════════════════════════════
 function showPage(name,btn){
-  // Limpiar style.display inline para que el CSS controle la visibilidad
   document.querySelectorAll('.page').forEach(p=>{p.style.display='';p.classList.remove('active');});
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='cmr'||name==='bci'){renderCardPage(name);renderCardKPIs(name);}
   if(name==='responsables')renderRespPage();
+  if(name==='analisis')renderAnalisis();
 }
 function switchTab(t,btn){
+  ['fijo','eventual'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// PÁGINA ANÁLISIS — solo admin
+// ══════════════════════════════════════════════════════════
+const _anCharts={};
+
+function renderAnalisis(){
+  renderAnPersonas();
+  renderAnEvolucion();
+  renderAnCategorias();
+  renderAnTopPersonas();
+}
+
+// ── SECCIÓN 1: Deuda mensual por persona ─────────────────
+function renderAnPersonas(){
+  const kpiEl=document.getElementById('anKpiPersonas');
+  const tbEl=document.getElementById('anTbodyPersonas');
+  if(!kpiEl||!tbEl)return;
+
+  const calcPersona=(respId)=>{
+    let fijos=0,ev=0;
+    gastos.forEach(g=>{
+      if(g.resp==respId){
+        if(g.tipo==='fijo') fijos+=g.monto;
+        else if(g.tipo==='eventual'&&g.mes===0) ev+=g.monto;
+      }
+    });
+    const cmr=cardRespMes('cmr',respId,0);
+    const bci=cardRespMes('bci',respId,0);
+    return{fijos,cmr,bci,ev,total:fijos+cmr+bci+ev};
+  };
+
+  // KPI cards
+  let kpiHTML='';
+  let tbHTML='';
+  let totalGlobal=0;
+
+  // Sin asignar
+  let naFijos=0,naCMR=0,naBCI=0,naEv=0;
+  gastos.forEach(g=>{if(!g.resp){if(g.tipo==='fijo')naFijos+=g.monto;else if(g.tipo==='eventual'&&g.mes===0)naEv+=g.monto;}});
+  CARDS.cmr.forEach(m=>{if(m.es_cuota&&m._estado!=='done'){const r=100-divPctTotal(m);if(r>0)naCMR+=Math.max(0,m.valor_cuota-(m.abono||0))*r/100;}});
+  CARDS.bci.forEach(m=>{if(m.es_cuota&&m._estado!=='done'){const r=100-divPctTotal(m);if(r>0)naBCI+=Math.max(0,m.valor_cuota-(m.abono||0))*r/100;}});
+  const naTotal=naFijos+naCMR+naBCI+naEv;
+  if(naTotal>0){
+    totalGlobal+=naTotal;
+    tbHTML+=`<tr><td><em style="color:var(--text-muted);">Sin asignar</em></td><td>${fmt(naFijos)}</td><td>${fmt(naCMR)}</td><td>${fmt(naBCI)}</td><td>${fmt(naEv)}</td><td class="td-red">${fmt(naTotal)}</td><td>${ingreso>0?Math.round(naTotal/ingreso*100):0}%</td></tr>`;
+  }
+
+  responsables.forEach(r=>{
+    const d=calcPersona(r.id);
+    if(d.total===0&&naTotal===0&&responsables.indexOf(r)>0) return; // skip zeroes unless first
+    totalGlobal+=d.total;
+    const pct=ingreso>0?Math.round(d.total/ingreso*100):0;
+    kpiHTML+=`<div class="kpi-card" style="border-top:3px solid ${r.color};">
+      <div class="kpi-label"><span class="badge-resp" style="background:${r.color}22;color:${r.color};">${r.iniciales}</span> ${r.nombre}</div>
+      <div class="kpi-value danger">${fmt(d.total)}</div>
+      <div class="kpi-sub">${pct}% del ingreso</div>
+    </div>`;
+    tbHTML+=`<tr>
+      <td><span class="badge-resp" style="background:${r.color}22;color:${r.color};margin-right:5px;">${r.iniciales}</span>${r.nombre}</td>
+      <td>${fmt(d.fijos)}</td><td>${fmt(d.cmr)}</td><td>${fmt(d.bci)}</td><td>${fmt(d.ev)}</td>
+      <td class="td-red" style="font-weight:700;">${fmt(d.total)}</td>
+      <td>${pct}%</td>
+    </tr>`;
+  });
+
+  // Fila total
+  tbHTML+=`<tr style="border-top:2px solid var(--border);">
+    <td style="font-weight:700;">TOTAL</td>
+    <td colspan="4"></td>
+    <td class="td-red" style="font-weight:700;">${fmt(totalGlobal)}</td>
+    <td>${ingreso>0?Math.round(totalGlobal/ingreso*100):0}%</td>
+  </tr>`;
+
+  kpiEl.innerHTML=kpiHTML;
+  tbEl.innerHTML=tbHTML;
+}
+
+// ── SECCIÓN 2: Evolución de cuotas 12 meses ──────────────
+function renderAnEvolucion(){
+  const now=new Date();
+  const meses=[];
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    meses.push(d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));
+  }
+
+  // Dataset por responsable
+  const datasets=[];
+  const COLORS=['#2980B9','#27AE60','#E67E22','#8E44AD','#C0392B','#16A085','#D35400'];
+
+  // Armar tabla
+  let tableHTML='<thead><tr><th>Mes</th>'+responsables.map(r=>`<th>${r.iniciales}</th>`).join('')+'<th>Total</th></tr></thead><tbody>';
+
+  responsables.forEach((r,ri)=>{
+    const data=[];
+    for(let i=0;i<12;i++) data.push(Math.round(cardRespMes('cmr',r.id,i)+cardRespMes('bci',r.id,i)));
+    datasets.push({label:r.nombre,data,borderColor:r.color||COLORS[ri%COLORS.length],backgroundColor:(r.color||COLORS[ri%COLORS.length])+'22',borderWidth:2,pointRadius:3,fill:false,tension:.3});
+  });
+
+  // Totales por mes para la tabla
+  for(let i=0;i<12;i++){
+    let rowTotal=0;
+    tableHTML+=`<tr><td>${meses[i]}</td>`;
+    responsables.forEach(r=>{
+      const v=Math.round(cardRespMes('cmr',r.id,i)+cardRespMes('bci',r.id,i));
+      rowTotal+=v;
+      tableHTML+=`<td>${v>0?fmt(v):'—'}</td>`;
+    });
+    tableHTML+=`<td class="td-red">${fmt(rowTotal)}</td></tr>`;
+  }
+  tableHTML+='</tbody>';
+  const tbl=document.getElementById('anEvolucionTable');
+  if(tbl) tbl.innerHTML=tableHTML;
+
+  // Leyenda
+  const leg=document.getElementById('anEvolucionLegend');
+  if(leg) leg.innerHTML=responsables.map(r=>`<span class="legend-item"><span class="legend-dot" style="background:${r.color};"></span>${r.nombre}</span>`).join('');
+
+  // Chart
+  if(_anCharts.evolucion){_anCharts.evolucion.destroy();}
+  const ctx=document.getElementById('anEvolucionChart');
+  if(!ctx)return;
+  _anCharts.evolucion=new Chart(ctx,{type:'line',data:{labels:meses,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K',color:'#7A756C',font:{size:10}},grid:{color:'rgba(0,0,0,.05)'}},
+        x:{ticks:{color:'#7A756C',font:{size:10}},grid:{display:false}}}}});
+}
+
+// ── SECCIÓN 3: Distribución por categoría ─────────────────
+function renderAnCategorias(){
+  // Gastos fijos por cat
+  const catFijos={};
+  gastos.forEach(g=>{if(g.tipo==='fijo') catFijos[g.cat]=(catFijos[g.cat]||0)+g.monto;});
+
+  // CMR cuotas activas — agrupar por concepto/desc como categoría aproximada
+  const catCMR={};
+  CARDS.cmr.forEach(m=>{
+    if(!m.es_cuota||m._estado==='done') return;
+    const cat=m.concepto||m.descBanco.replace(/COMPRA\s+(CUOTAS\s+SIN\s+INTERES\s+)?/i,'').substring(0,20);
+    catCMR[cat]=(catCMR[cat]||0)+m.valor_cuota;
+  });
+
+  const PALETTE=['#2980B9','#27AE60','#E67E22','#8E44AD','#C0392B','#16A085','#D35400','#F39C12','#1ABC9C','#95A5A6'];
+  const mkDoughnut=(canvasId,dataObj)=>{
+    const labels=Object.keys(dataObj).filter(k=>dataObj[k]>0);
+    const data=labels.map(k=>dataObj[k]);
+    const colors=labels.map((_,i)=>PALETTE[i%PALETTE.length]);
+    if(_anCharts[canvasId]){_anCharts[canvasId].destroy();}
+    const ctx=document.getElementById(canvasId);if(!ctx)return;
+    _anCharts[canvasId]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'var(--surface)'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{font:{size:10},color:'#7A756C',boxWidth:12}},
+          tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)}}}}});
+  };
+  mkDoughnut('anCatFijosChart',catFijos);
+  mkDoughnut('anCatCMRChart',catCMR);
+}
+
+// ── SECCIÓN 4: Top movimientos por persona ─────────────────
+function renderAnTopPersonas(){
+  const el=document.getElementById('anTopPersonas');if(!el)return;
+  el.innerHTML=responsables.map(r=>{
+    const movs=[];
+    ['cmr','bci'].forEach(cid=>{
+      CARDS[cid].forEach(m=>{
+        if(!m.es_cuota||m._estado==='done')return;
+        const div=m.divisiones.find(d=>d.respId==r.id);
+        if(!div)return;
+        const neto=Math.max(0,m.valor_cuota-(m.abono||0));
+        movs.push({label:m.concepto||m.descBanco,monto:neto*div.pct/100,pct:div.pct,card:cid.toUpperCase(),cuotas:m.cuotas_pend});
+      });
+    });
+    movs.sort((a,b)=>b.monto-a.monto);
+    const top=movs.slice(0,6);
+    if(!top.length) return '';
+    const total=movs.reduce((s,m)=>s+m.monto,0);
+    return`<div class="chart-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;">
+        <span class="badge-resp" style="background:${r.color}22;color:${r.color};font-size:12px;padding:3px 9px;">${r.iniciales}</span>
+        <span style="font-weight:500;font-size:14px;">${r.nombre}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--danger);font-weight:600;">${fmt(total)}/m</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;padding:4px 6px;text-align:left;">Movimiento</th>
+          <th style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;padding:4px 6px;">%</th>
+          <th style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;padding:4px 6px;">Cuotas</th>
+          <th style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;padding:4px 6px;text-align:right;">Mi cuota/m</th>
+        </tr></thead>
+        <tbody>${top.map(m=>`<tr style="border-top:1px solid var(--border);">
+          <td style="font-size:11px;padding:5px 6px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${m.label}">${m.label}</td>
+          <td style="font-size:11px;padding:5px 6px;color:var(--text-muted);text-align:center;">${m.pct}%</td>
+          <td style="font-size:11px;padding:5px 6px;text-align:center;">${m.cuotas}</td>
+          <td style="font-size:11px;padding:5px 6px;color:var(--danger);font-weight:600;text-align:right;">${fmt(m.monto)}</td>
+        </tr>`).join('')}
+        ${movs.length>6?`<tr><td colspan="4" style="font-size:10px;color:var(--text-muted);padding:4px 6px;">+${movs.length-6} más</td></tr>`:''}
+        </tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
   ['fijo','eventual'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -1810,6 +2089,9 @@ function pinOK(){
       // Admin: restaurar visibilidad y mostrar app completa
       document.querySelector('header').style.display='flex';
       document.getElementById('respView').style.display='none';
+      // Mostrar pestaña Análisis solo para admin
+      const tabAn=document.getElementById('tab-analisis');
+      if(tabAn) tabAn.style.display='';
       // Activar dashboard (showPage limpia style.display internamente)
       const dashBtn=document.querySelector('.nav-tab');
       if(dashBtn) showPage('dashboard',dashBtn);
