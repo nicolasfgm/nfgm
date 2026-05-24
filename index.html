@@ -110,6 +110,18 @@ tr:hover td{background:var(--surface2);}
 .badge-new{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#FEF3E2;color:#D4850A;margin-left:4px;vertical-align:middle;}
 .badge-upd{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#EBF5FB;color:#1A5276;margin-left:4px;vertical-align:middle;}
 .badge-por-confirmar{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--warn-light);color:var(--warn);margin-left:4px;vertical-align:middle;}
+.badge-duplicado{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#FDECEA;color:#C0392B;margin-left:4px;vertical-align:middle;}
+.badge-facturado{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--accent-light);color:var(--accent-mid);margin-left:4px;vertical-align:middle;}
+.dup-panel{background:var(--surface);border:2px solid var(--danger);border-radius:var(--rsm);padding:12px;margin-top:8px;}
+.dup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+.dup-col{background:var(--surface2);border-radius:6px;padding:8px 10px;font-size:11px;}
+.dup-col-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.dup-col-title.facturado{color:var(--accent-mid);}
+.dup-col-title.ultimos{color:var(--warn);}
+.btn-dup{padding:5px 12px;font-size:11px;font-weight:600;border:none;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-dup-fact{background:var(--accent);color:#fff;}
+.btn-dup-ult{background:var(--warn);color:#fff;}
+.btn-dup-cancel{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);}
 .toggle-proyeccion{display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;padding:2px 7px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);transition:all .15s;white-space:nowrap;}
 .toggle-proyeccion.activo{background:var(--accent-light);border-color:var(--accent-mid);color:var(--accent-mid);font-weight:600;}
 .badge-done{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--surface2);color:var(--text-muted);margin-left:4px;vertical-align:middle;}
@@ -375,6 +387,10 @@ tr:hover td{background:var(--surface2);}
       <div class="kpi-card"><div class="kpi-label">Sin responsable/división</div><div class="kpi-value warning" id="cmrKpiSinResp">0</div><div class="kpi-sub">cuotas sin asignar</div></div>
       <div class="kpi-card"><div class="kpi-label">Mayor cuota</div><div class="kpi-value danger" id="cmrKpiMax">$0</div><div class="kpi-sub" id="cmrKpiMaxSub">—</div></div>
     </div>
+    <div id="cmrDupBanner" style="display:none;" class="alert alert-danger" style="margin-bottom:.75rem;cursor:pointer;">
+      ⚠️ Hay <span id="cmrDupCount"></span> duplicado(s) sin resolver entre Facturados y Últimos Movimientos.
+      <button onclick="filterCard('cmr','duplicados',document.querySelector('#page-cmr .filter-btn'))" style="margin-left:10px;background:var(--danger);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;">Ver duplicados →</button>
+    </div>
     <div class="filter-row">
       <span style="font-size:11px;font-weight:600;color:var(--text-muted);">Ver:</span>
       <button class="filter-btn active" onclick="filterCard('cmr','todos',this)">Todos</button>
@@ -383,13 +399,18 @@ tr:hover td{background:var(--surface2);}
       <button class="filter-btn" onclick="filterCard('cmr','sin-conc',this)">Sin concepto</button>
       <button class="filter-btn" onclick="filterCard('cmr','sin-resp',this)">Sin responsable</button>
       <button class="filter-btn" onclick="filterCard('cmr','nuevos',this)">Nuevos/actualizados</button>
+      <button class="filter-btn" onclick="filterCard('cmr','duplicados',this)">⚠️ Duplicados</button>
       <button class="filter-btn" onclick="filterCard('cmr','por-confirmar',this)">⏳ Por confirmar</button>
       <button class="filter-btn" onclick="filterCard('cmr','periodo',this)">Período actual (≤día 19)</button>
     </div>
     <div class="table-card" style="margin-bottom:1.25rem;">
       <div class="table-header"><span>Movimientos CMR</span><span style="font-size:11px;color:var(--text-muted);" id="cmrMovCount"></span></div>
       <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
-        <table><thead><tr><th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th><th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th><th>Tipo</th><th></th></tr></thead>
+        <table><thead><tr>
+          <th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th>
+          <th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th>
+          <th>Primer cobro</th><th>Origen</th><th></th>
+        </tr></thead>
         <tbody id="cmrTbody"></tbody></table>
       </div>
     </div>
@@ -435,6 +456,10 @@ tr:hover td{background:var(--surface2);}
       <div class="kpi-card"><div class="kpi-label">Sin responsable/división</div><div class="kpi-value warning" id="bciKpiSinResp">0</div><div class="kpi-sub">cuotas sin asignar</div></div>
       <div class="kpi-card"><div class="kpi-label">Mayor cuota</div><div class="kpi-value danger" id="bciKpiMax">$0</div><div class="kpi-sub" id="bciKpiMaxSub">—</div></div>
     </div>
+    <div id="bciDupBanner" style="display:none;" class="alert alert-danger" style="margin-bottom:.75rem;">
+      ⚠️ Hay <span id="bciDupCount"></span> duplicado(s) sin resolver entre Facturados y Últimos Movimientos.
+      <button onclick="filterCard('bci','duplicados',document.querySelector('#page-bci .filter-btn'))" style="margin-left:10px;background:var(--danger);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;">Ver duplicados →</button>
+    </div>
     <div class="filter-row">
       <span style="font-size:11px;font-weight:600;color:var(--text-muted);">Ver:</span>
       <button class="filter-btn active" onclick="filterCard('bci','todos',this)">Todos</button>
@@ -443,12 +468,17 @@ tr:hover td{background:var(--surface2);}
       <button class="filter-btn" onclick="filterCard('bci','sin-conc',this)">Sin concepto</button>
       <button class="filter-btn" onclick="filterCard('bci','sin-resp',this)">Sin responsable</button>
       <button class="filter-btn" onclick="filterCard('bci','nuevos',this)">Nuevos/actualizados</button>
+      <button class="filter-btn" onclick="filterCard('bci','duplicados',this)">⚠️ Duplicados</button>
       <button class="filter-btn" onclick="filterCard('bci','periodo',this)">Período actual (28→27)</button>
     </div>
     <div class="table-card" style="margin-bottom:1.25rem;">
       <div class="table-header"><span>Movimientos BCI Visa</span><span style="font-size:11px;color:var(--text-muted);" id="bciMovCount"></span></div>
       <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
-        <table><thead><tr><th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th><th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th><th>Tipo</th><th></th></tr></thead>
+        <table><thead><tr>
+          <th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th>
+          <th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th>
+          <th>Primer cobro</th><th>Origen</th><th></th>
+        </tr></thead>
         <tbody id="bciTbody"></tbody></table>
       </div>
     </div>
@@ -587,12 +617,11 @@ function rowDomId(cardId,key){
   return cardId+'-r-'+btoa(unescape(encodeURIComponent(key))).replace(/[^a-zA-Z0-9]/g,'').substring(0,38);
 }
 
-function mergeCARD(db,rows,markNew=false,isBCI=false){
-  let added=0,updated=0;
+function mergeCARD(db,rows,markNew=false,isBCI=false,origen='ultimos'){
+  let added=0,updated=0,duplicados=0;
   rows.forEach(r=>{
     const descForKey = isBCI ? (r.descNorm||normalizeBCIDesc(r.descBanco)) : r.descBanco;
     const key=cardKey(r.fecha, descForKey, r.monto);
-    // Detectar si viene con asterisco (por confirmar) — solo CMR
     const esPorConfirmar = !isBCI && /\*+\s*$/.test(String(r.descBanco));
     const ex=db.get(key);
     if(!ex){
@@ -601,11 +630,34 @@ function mergeCARD(db,rows,markNew=false,isBCI=false){
         valor_cuota:Number(r.valor_cuota)||Number(r.monto),
         es_cuota:Number(r.cuotas_pend)>0,concepto:'',divisiones:[],abono:0,
         _por_confirmar: esPorConfirmar,
-        incluir_proyeccion: false,   // por defecto no incluir hasta confirmar
-        cuotas_estimadas: 1,         // cuotas estimadas si se decide incluir
+        incluir_proyeccion: false, cuotas_estimadas: 1,
+        origen: origen,              // 'ultimos' | 'facturado'
+        fecha_cobro: origen==='facturado' ? r.fecha_cobro||String(r.fecha).substring(0,10) : '',
+        _duplicado: false,           // true cuando hay conflicto ultimos vs facturado sin resolver
+        _duplicado_origen: null,     // datos del otro origen para mostrar al usuario
         _estado:markNew?'new':'normal'});
       added++;
     } else {
+      // ── Detección de duplicado entre orígenes distintos ──────
+      // Si el registro existente viene de 'ultimos' y el nuevo de 'facturado' (o viceversa)
+      // → marcar como duplicado para que el usuario decida
+      if(markNew && origen!==ex.origen && !ex._duplicado_resuelto){
+        ex._duplicado=true;
+        // Guardar snapshot del nuevo origen para comparar
+        ex._duplicado_origen={
+          origen,
+          fecha: String(r.fecha).substring(0,10),
+          descBanco: r.descBanco,
+          monto: Number(r.monto),
+          cuotas_pend: Number(r.cuotas_pend)||0,
+          valor_cuota: Number(r.valor_cuota)||Number(r.monto),
+          fecha_cobro: origen==='facturado' ? r.fecha_cobro||String(r.fecha).substring(0,10) : '',
+        };
+        ex._estado='upd';
+        duplicados++;
+        return; // No actualizar automáticamente — esperar decisión del usuario
+      }
+      // Actualización normal (mismo origen o ya resuelto)
       const nc=Number(r.cuotas_pend)||0;
       const changed=ex.cuotas_pend!==nc || ex.es_cuota!==(nc>0);
       const descNueva=r.descBanco.replace(/\*+$/,'').trim();
@@ -614,16 +666,19 @@ function mergeCARD(db,rows,markNew=false,isBCI=false){
       ex.cuotas_pend=nc;
       ex.valor_cuota=Number(r.valor_cuota)||Number(r.monto);
       ex.es_cuota=nc>0;
-      // Si ya no tiene asterisco → se confirmó, limpiar estado por_confirmar
+      if(origen==='facturado'){
+        ex.origen='facturado';
+        if(r.fecha_cobro) ex.fecha_cobro=r.fecha_cobro;
+      }
       if(!esPorConfirmar && ex._por_confirmar){
         ex._por_confirmar=false;
-        ex.incluir_proyeccion=false; // ya no necesita el toggle manual
+        ex.incluir_proyeccion=false;
       }
       if(nc===0&&ex.es_cuota===false&&changed) ex._estado='done';
       else if(changed&&markNew){ex._estado='upd';updated++;}
     }
   });
-  return{added,updated};
+  return{added,updated,duplicados};
 }
 
 // ── Helpers de división ──────────────────────────────────
@@ -766,18 +821,29 @@ function handleXlsx(file,cardId,statusId){
 
       const parsed=[];
       let skipped=0;
+      let origenArchivo='ultimos'; // default
+      let fechaFacturacionBCI=''; // fecha de corte del período BCI
 
       if(isBCI){
+        // ── Detectar si es "Facturación" BCI por el encabezado ──
+        // Los archivos de facturación BCI tienen "Fecha de facturación" en las primeras filas
+        for(let i=0;i<Math.min(hi,rows.length);i++){
+          const rowStr=rows[i].map(c=>String(c||'')).join(' ').toUpperCase();
+          if(rowStr.includes('FACTURACI')||rowStr.includes('PERIODO')||rowStr.includes('PERÍODO')){
+            origenArchivo='facturado';
+            // Buscar la fecha de facturación (formato dd-mm-yyyy o serial Excel)
+            const fechaMatch=rows[i].find(c=>c&&(String(c).match(/\d{2}[-/]\d{2}[-/]\d{4}/)||typeof c==='number'));
+            if(fechaMatch) fechaFacturacionBCI=parseBCIDate(fechaMatch);
+            break;
+          }
+        }
         // ── Parser BCI ──────────────────────────────────────────
-        // Cols: Fecha | Código ref | Ciudad | Descripción | Tipo tarjeta | Monto ($)
         const ci={
           fecha: h.findIndex(c=>c.includes('FECHA')),
           ref:   h.findIndex(c=>c.includes('C')&&(c.includes('DIGO')||c.includes('REF'))),
           desc:  h.findIndex(c=>c.includes('DESCRIPCI')),
           monto: h.findIndex(c=>c.includes('MONTO')||c.includes('$')),
         };
-        // Detect if this is "No Facturados" (has cuota codes in desc) or "Facturación"
-        // We process both the same way for storage purposes
         for(let i=hi+1;i<rows.length;i++){
           const row=rows[i];
           if(!row[ci.fecha]&&!row[ci.desc])continue;
@@ -785,25 +851,26 @@ function handleXlsx(file,cardId,statusId){
           const descRaw=String(row[ci.desc]||'').trim();
           const monto=Number(row[ci.monto])||0;
           if(!fecha||!descRaw)continue;
-          // Excluir pagos (monto negativo) y cobros administrativos internos
           if(monto<=0){skipped++;continue;}
           if(/MONTO CANCELADO|PAGO NORMAL/i.test(descRaw)){skipped++;continue;}
           const descNorm=normalizeBCIDesc(descRaw);
-          // Detectar si es cuota
           const cuotaInfo=extractBCICuotas(descRaw);
           const cuotas_pend = cuotaInfo ? cuotaInfo.cuotas_pend : 0;
           const valor_cuota=monto;
           parsed.push({
-            fecha,
-            descBanco: descRaw,
-            descNorm,           // guardamos normalizada para matching futuro
-            monto,              // para BCI no-facturado es la cuota, no el total
-            cuotas_pend,
-            valor_cuota,
+            fecha, descBanco: descRaw, descNorm, monto, cuotas_pend, valor_cuota,
+            // Para facturados BCI: fecha_cobro = fecha de facturación del archivo
+            fecha_cobro: origenArchivo==='facturado' ? (fechaFacturacionBCI||fecha) : '',
           });
         }
       } else {
-        // ── Parser CMR (formato anterior) ──────────────────────
+        // ── Detectar si es CMR "Facturados" vs "Últimos movimientos" ──
+        // CMR Facturados tiene columnas CUOTAS PENDIENTES y VALOR CUOTA
+        // CMR Últimos movimientos tiene asteriscos en las descripciones
+        const tieneValorCuota=h.some(c=>c.includes('VALOR')&&c.includes('CUOTA'));
+        const tieneCuotasPend=h.some(c=>c.includes('CUOTAS'));
+        origenArchivo=(tieneValorCuota&&tieneCuotasPend)?'facturado':'ultimos';
+
         const ci={
           fecha:    h.findIndex(c=>c.includes('FECHA')),
           desc:     h.findIndex(c=>c.includes('DESCRIPCI')),
@@ -811,24 +878,39 @@ function handleXlsx(file,cardId,statusId){
           cuotas:   h.findIndex(c=>c.includes('CUOTAS')),
           valcuota: h.findIndex(c=>c.includes('VALOR')&&c.includes('CUOTA')),
         };
+        // Para CMR facturados: fecha_cobro = fecha máxima del listado
+        let maxFechaCMR='';
+        for(let i=hi+1;i<rows.length;i++){
+          const row=rows[i];
+          if(!row[ci.fecha])continue;
+          let f=row[ci.fecha];
+          if(typeof f==='number') f=new Date(Math.round((f-25569)*86400000)).toISOString().substring(0,10);
+          else f=String(f||'').substring(0,10);
+          if(f>maxFechaCMR) maxFechaCMR=f;
+        }
         for(let i=hi+1;i<rows.length;i++){
           const row=rows[i];
           if(!row[ci.fecha]&&!row[ci.desc])continue;
           let fecha=row[ci.fecha];
           if(typeof fecha==='number') fecha=new Date(Math.round((fecha-25569)*86400000)).toISOString().substring(0,10);
           else fecha=String(fecha||'').substring(0,10);
-          const desc=String(row[ci.desc]||'').trim().replace(/\*+$/, ''); // quitar asterisco final CMR
+          const desc=String(row[ci.desc]||'').trim().replace(/\*+$/, '');
           const monto=Math.abs(Number(row[ci.monto])||0);
           const cuotas_pend=Number(row[ci.cuotas])||0;
           const valor_cuota=Math.abs(Number(ci.valcuota>=0?row[ci.valcuota]:0)||monto);
           if(!fecha||!desc||!monto)continue;
-          parsed.push({fecha,descBanco:desc,monto,cuotas_pend,valor_cuota});
+          parsed.push({fecha,descBanco:desc,monto,cuotas_pend,valor_cuota,
+            // fecha_cobro = fecha máxima del listado (= fecha de facturación CMR)
+            fecha_cobro: origenArchivo==='facturado' ? maxFechaCMR : '',
+          });
         }
       }
 
-      const {added,updated}=mergeCARD(CARDS[cardId],parsed,true,isBCI);
+      const {added,updated,duplicados}=mergeCARD(CARDS[cardId],parsed,true,isBCI,origenArchivo);
       const skipMsg=skipped>0?` (${skipped} pagos/cancelados ignorados)`:'';
-      status.textContent=`✓ ${parsed.length} filas procesadas — ${added} nuevas, ${updated} actualizadas${skipMsg}. Conceptos y divisiones conservados.`;
+      const dupMsg=duplicados>0?` ⚠️ ${duplicados} duplicado(s) detectado(s) — revísalos en el filtro`:'';
+      status.textContent=`✓ ${parsed.length} filas · ${added} nuevas · ${updated} actualizadas · origen: ${origenArchivo}${skipMsg}${dupMsg}`;
+      renderCardPage(cardId);renderCardKPIs(cardId);render();
       renderCardPage(cardId);renderCardKPIs(cardId);render();
     }catch(err){status.textContent='⚠️ Error: '+err.message+' — '+err.stack?.split('\n')[0];}
   };
@@ -1214,6 +1296,28 @@ function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-b
 // ══════════════════════════════════════════════════════════
 const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
 
+// ── Resolver duplicado ───────────────────────────────────
+function resolverDup(cardId,key,conservar){
+  const m=CARDS[cardId].get(key);if(!m)return;
+  const otro=m._duplicado_origen;
+  if(conservar==='facturado'){
+    const esMFact=m.origen==='facturado';
+    const fact=esMFact?{...m}:otro;
+    if(fact){
+      m.fecha=fact.fecha||m.fecha;
+      m.monto=fact.monto||m.monto;
+      m.cuotas_pend=fact.cuotas_pend!=null?fact.cuotas_pend:m.cuotas_pend;
+      m.valor_cuota=fact.valor_cuota||m.valor_cuota;
+      m.es_cuota=(fact.cuotas_pend||0)>0;
+      m.fecha_cobro=fact.fecha_cobro||m.fecha_cobro||'';
+      m.origen='facturado';
+    }
+  }
+  m._duplicado=false; m._duplicado_resuelto=true; m._duplicado_origen=null; m._estado='normal';
+  renderCardTable(cardId);renderCardKPIs(cardId);render();
+  saveIfReady(async()=>{showSyncing();await saveMovimiento(m);showSynced();});
+}
+
 // ── Toggle incluir en proyección (movimientos por confirmar) ──
 function toggleProyeccion(cardId,key){
   const m=CARDS[cardId].get(key);if(!m||!m._por_confirmar)return;
@@ -1302,56 +1406,96 @@ function divPillsHTML(m){
 
 function renderCardTable(cardId){
   cancelEdit();
+  // Update duplicate banner
+  const dups=[...CARDS[cardId].values()].filter(m=>m._duplicado&&!m._duplicado_resuelto);
+  const banner=document.getElementById(cardId+'DupBanner');
+  const count=document.getElementById(cardId+'DupCount');
+  if(banner&&count){banner.style.display=dups.length?'block':'none';count.textContent=dups.length;}
+
   let entries=[...CARDS[cardId].values()];
   const f=cardFilters[cardId];
-  if(f==='cuotas')       entries=entries.filter(m=>m.es_cuota&&m._estado!=='done');
-  else if(f==='contado') entries=entries.filter(m=>!m.es_cuota);
-  else if(f==='sin-conc')entries=entries.filter(m=>m._estado!=='done'&&(!m.concepto||!m.concepto.trim()));
-  else if(f==='sin-resp')entries=entries.filter(m=>m._estado!=='done'&&m.es_cuota&&!m.divisiones.length);
-  else if(f==='nuevos')  entries=entries.filter(m=>m._estado==='new'||m._estado==='upd');
+  if(f==='cuotas')          entries=entries.filter(m=>m.es_cuota&&m._estado!=='done');
+  else if(f==='contado')    entries=entries.filter(m=>!m.es_cuota);
+  else if(f==='sin-conc')   entries=entries.filter(m=>m._estado!=='done'&&(!m.concepto||!m.concepto.trim()));
+  else if(f==='sin-resp')   entries=entries.filter(m=>m._estado!=='done'&&m.es_cuota&&!m.divisiones.length);
+  else if(f==='nuevos')     entries=entries.filter(m=>m._estado==='new'||m._estado==='upd');
   else if(f==='por-confirmar') entries=entries.filter(m=>m._por_confirmar);
-  else if(f==='periodo') entries=entries.filter(m=>enPeriodoActual(cardId,m.fecha));
+  else if(f==='duplicados') entries=entries.filter(m=>m._duplicado&&!m._duplicado_resuelto);
+  else if(f==='periodo')    entries=entries.filter(m=>enPeriodoActual(cardId,m.fecha));
   const ord={new:0,upd:1,normal:2,done:3};
   entries.sort((a,b)=>ord[a._estado]-ord[b._estado]||b.fecha.localeCompare(a.fecha));
   document.getElementById(cardId+'MovCount').textContent=entries.length+' movimientos';
   const tbody=document.getElementById(cardId+'Tbody');
   tbody.innerHTML=entries.map(m=>{
     const badge=m._estado==='new'?'<span class="badge-new">NUEVO</span>':m._estado==='upd'?'<span class="badge-upd">ACTUALIZ.</span>':m._estado==='done'?'<span class="badge-done">TERMINADO</span>':'';
+    const dupBadge=m._duplicado&&!m._duplicado_resuelto?'<span class="badge-duplicado">⚠️ DUP</span>':'';
     const porConf=m._por_confirmar?'<span class="badge-por-confirmar">⏳ Por confirmar</span>':'';
     const periodobadge=enPeriodoActual(cardId,m.fecha)?'<span class="badge-periodo">PERÍODO ACT.</span>':'';
     const concCell=m.concepto?`<span class="concepto-val">${m.concepto}</span>`:`<span style="color:var(--text-muted);font-size:11px;font-style:italic;">—</span>`;
-    const rowClass=m._estado==='new'?'row-new':m._estado==='upd'?'row-upd':m._estado==='done'?'row-done':'';
+    const rowClass=m._duplicado&&!m._duplicado_resuelto?'row-new':m._estado==='new'?'row-new':m._estado==='upd'?'row-upd':m._estado==='done'?'row-done':'';
     const domId=rowDomId(cardId,m.key);
     const jsKey=JSON.stringify(m.key);const jsCard=JSON.stringify(cardId);
     const neto=Math.max(0,m.valor_cuota-(m.abono||0));
     const cuotaCell=m.es_cuota
-      ? (m.abono>0
-          ? `<span class="td-red" style="text-decoration:line-through;font-size:10px;">${fmt(m.valor_cuota)}</span> <span class="td-green">${fmt(neto)}/m</span>`
-          : `<span class="td-red">${fmt(m.valor_cuota)}/m</span>`)
-      : fmt(m.valor_cuota);
+      ?(m.abono>0?`<span class="td-red" style="text-decoration:line-through;font-size:10px;">${fmt(m.valor_cuota)}</span> <span class="td-green">${fmt(neto)}/m</span>`:`<span class="td-red">${fmt(m.valor_cuota)}/m</span>`)
+      :fmt(m.valor_cuota);
+    const origenBadge=m.origen==='facturado'?'<span class="badge-facturado">Facturado</span>':'<span style="font-size:10px;color:var(--text-muted);">Últimos mov.</span>';
+    const fechaCobroCell=m.fecha_cobro?`<span style="font-size:11px;font-weight:500;">${m.fecha_cobro}</span>`:'<span style="color:var(--text-muted);font-size:11px;">—</span>';
+
+    // Panel de resolución de duplicado (inline bajo la fila)
+    const dupPanel=m._duplicado&&!m._duplicado_resuelto?`
+      <tr class="row-new" id="dup-panel-${domId}">
+        <td colspan="10">
+          <div class="dup-panel">
+            <div style="font-size:12px;font-weight:600;color:var(--danger);margin-bottom:8px;">⚠️ Duplicado detectado — elige qué versión conservar:</div>
+            <div class="dup-row">
+              <div class="dup-col">
+                <div class="dup-col-title facturado">✓ Versión Facturada</div>
+                ${m.origen==='facturado'?`
+                  <div>Fecha: ${m.fecha}</div>
+                  <div>Monto: ${fmt(m.monto)}</div>
+                  <div>Cuotas: ${m.cuotas_pend}</div>
+                  <div>Primer cobro: ${m.fecha_cobro||'—'}</div>
+                `:m._duplicado_origen&&m._duplicado_origen.origen==='facturado'?`
+                  <div>Fecha: ${m._duplicado_origen.fecha}</div>
+                  <div>Monto: ${fmt(m._duplicado_origen.monto)}</div>
+                  <div>Cuotas: ${m._duplicado_origen.cuotas_pend}</div>
+                  <div>Primer cobro: ${m._duplicado_origen.fecha_cobro||'—'}</div>
+                `:'<div style="color:var(--text-muted);">No disponible</div>'}
+              </div>
+              <div class="dup-col">
+                <div class="dup-col-title ultimos">Versión Últimos Movimientos</div>
+                ${m.origen==='ultimos'?`
+                  <div>Fecha: ${m.fecha}</div>
+                  <div>Monto: ${fmt(m.monto)}</div>
+                  <div>Cuotas: ${m.cuotas_pend}</div>
+                `:m._duplicado_origen&&m._duplicado_origen.origen==='ultimos'?`
+                  <div>Fecha: ${m._duplicado_origen.fecha}</div>
+                  <div>Monto: ${fmt(m._duplicado_origen.monto)}</div>
+                  <div>Cuotas: ${m._duplicado_origen.cuotas_pend}</div>
+                `:'<div style="color:var(--text-muted);">No disponible</div>'}
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-dup btn-dup-fact" onclick='resolverDup(${jsCard},${jsKey},"facturado")'>✓ Usar Facturado</button>
+              <button class="btn-dup btn-dup-ult"  onclick='resolverDup(${jsCard},${jsKey},"ultimos")'>Usar Últimos Mov.</button>
+            </div>
+          </div>
+        </td>
+      </tr>`:'';
+
     return`<tr id="${domId}" class="${rowClass}">
-      <td style="white-space:nowrap;">${m.fecha}${badge}${porConf}${periodobadge}</td>
+      <td style="white-space:nowrap;">${m.fecha}${badge}${dupBadge}${porConf}${periodobadge}</td>
       <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${m.descBanco}">${m.descBanco}</td>
       <td>${concCell}</td>
       <td>${divPillsHTML(m)}</td>
       <td style="white-space:nowrap;">${fmt(m.monto)}</td>
       <td>${m.es_cuota?m.cuotas_pend:'—'}</td>
       <td style="white-space:nowrap;">${cuotaCell}</td>
-      <td>${m._por_confirmar
-        ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
-            <button class="toggle-proyeccion${m.incluir_proyeccion?' activo':''}"
-              onclick='toggleProyeccion(${jsCard},${jsKey})'>
-              ${m.incluir_proyeccion?'✓ En proyección':'+ Incluir'}
-            </button>
-            ${m.incluir_proyeccion?`<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);">
-              Cuotas est.: <input type="number" min="1" value="${m.cuotas_estimadas||1}"
-                style="width:44px;font-size:11px;padding:2px 4px;text-align:center;"
-                onchange='setCuotasEstimadas(${jsCard},${jsKey},this.value)'>
-            </div>`:''}
-           </div>`
-        : m.es_cuota?'<span style="font-size:10px;background:var(--info-light);color:var(--info);padding:1px 5px;border-radius:3px;">Cuotas</span>':'<span style="font-size:10px;background:var(--surface2);color:var(--text-muted);padding:1px 5px;border-radius:3px;">Contado</span>'}</td>
+      <td>${fechaCobroCell}</td>
+      <td>${origenBadge}</td>
       <td><button class="btn-edit" onclick='openEdit(${jsCard},${jsKey})'>✏️</button></td>
-    </tr>`;
+    </tr>${dupPanel}`;
   }).join('');
 }
 
@@ -1378,6 +1522,8 @@ function openEdit(cardId,key){
     <td>
       <div class="field-hint">Concepto (visible para todos)</div>
       <input type="text" id="edit-concepto" placeholder="Ej: Zapatillas de Javier" value="${m.concepto||''}" style="width:100%;">
+      <div class="field-hint" style="margin-top:8px;">Fecha primer cobro efectivo</div>
+      <input type="date" id="edit-fecha-cobro" value="${m.fecha_cobro||''}" style="width:100%;">
     </td>
     <td colspan="6">
       <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;">
@@ -1495,6 +1641,7 @@ function saveEdit(cardId,key){
   const total=_divData.reduce((s,d)=>s+Number(d.pct),0);
   if(total>100){alert('La suma de porcentajes supera el 100%. Corrígela antes de guardar.');return;}
   m.concepto=document.getElementById('edit-concepto').value.trim();
+  m.fecha_cobro=document.getElementById('edit-fecha-cobro')?.value||m.fecha_cobro||'';
   m.abono=Math.max(0,Number(document.getElementById('edit-abono').value)||0);
   m.divisiones=_divData.filter(d=>d.respId&&Number(d.pct)>0).map(d=>({respId:d.respId,pct:Number(d.pct)}));
   // Si no hay divisiones asignadas → el admin (Nicolás) asume el 100% por defecto
@@ -1785,6 +1932,11 @@ async function loadFromSupabase(){
         _por_confirmar:m.por_confirmar||false,
         incluir_proyeccion:m.incluir_proyeccion||false,
         cuotas_estimadas:Number(m.cuotas_estimadas)||1,
+        fecha_cobro:m.fecha_cobro||'',
+        origen:m.origen||'ultimos',
+        _duplicado:m.duplicado||false,
+        _duplicado_resuelto:m.duplicado_resuelto||false,
+        _duplicado_origen:null,
       };
       if(CARDS[m.card_id]) CARDS[m.card_id].set(m.key, entry);
     });
@@ -1842,6 +1994,10 @@ async function saveMovimiento(m){
     por_confirmar:m._por_confirmar||false,
     incluir_proyeccion:m.incluir_proyeccion||false,
     cuotas_estimadas:m.cuotas_estimadas||1,
+    fecha_cobro:m.fecha_cobro||'',
+    origen:m.origen||'ultimos',
+    duplicado:m._duplicado||false,
+    duplicado_resuelto:m._duplicado_resuelto||false,
     updated_at:new Date().toISOString()
   });
   // Divisiones: borrar las viejas e insertar las nuevas
