@@ -13,7 +13,7 @@
 :root{
   --bg:#F7F5F0;--surface:#fff;--surface2:#F0EDE6;--border:#E2DDD5;
   --text:#1A1814;--text-muted:#7A756C;
-  --accent:#2D5016;--accent-light:#E8F|0DE;--accent-mid:#5A8A30;
+  --accent:#2D5016;--accent-light:#E8F0DE;--accent-mid:#5A8A30;
   --danger:#C0392B;--danger-light:#FDECEA;
   --warn:#D4850A;--warn-light:#FEF3E2;
   --info:#1A5276;--info-light:#EBF5FB;
@@ -1652,10 +1652,15 @@ function loginSelectUser(respId){
 }
 
 // Teclado físico: escucha teclas numéricas y backspace en el documento
-// Solo activo cuando el paso 2 está visible
+// Solo activo cuando la pantalla de login está visible Y el foco no está en un input
 document.addEventListener('keydown', function(e){
+  const loginScreen = document.getElementById('loginScreen');
+  if(!loginScreen || loginScreen.style.display==='none') return;
   const step2 = document.getElementById('loginStep2');
   if(!step2 || step2.style.display==='none') return;
+  // No interceptar si el usuario está escribiendo en un input, select o textarea
+  const tag = document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
   if(e.key>='0'&&e.key<='9'){ pinKey(e.key); e.preventDefault(); }
   else if(e.key==='Backspace'){ pinBack(); e.preventDefault(); }
   else if(e.key==='Enter'){ pinOK(); e.preventDefault(); }
