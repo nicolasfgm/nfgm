@@ -554,6 +554,15 @@ function mergeCARD(db,rows,markNew=false,isBCI=false){
   return{added,updated};
 }
 
+// ── Helpers de división ──────────────────────────────────
+function divMonto(m,respId){
+  const d=(m.divisiones||[]).find(d=>d.respId==respId);
+  return d?(Math.max(0,m.valor_cuota-(m.abono||0))*d.pct/100):0;
+}
+function divPctTotal(m){
+  return (m.divisiones||[]).reduce((s,d)=>s+Number(d.pct),0);
+}
+
 function cardTotalMes(cardId,mesIdx){
   let t=0;
   CARDS[cardId].forEach(m=>{
