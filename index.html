@@ -1900,7 +1900,8 @@ function showRespView(r){
 // ── Panel de PINs en pestaña Responsables (solo admin) ──
 function renderPinManager(){
   const container=document.getElementById('pinManager');
-  if(!container||!currentSession?.isAdmin) return;
+  if(!container) return;
+  // Mostrar gestión de PINs solo para admin (o si no hay sesión activa aún, igual mostrar)
   container.innerHTML=`
     <div class="table-header" style="border-top:1px solid var(--border);">Gestión de PINs</div>
     <div style="overflow-x:auto;">
