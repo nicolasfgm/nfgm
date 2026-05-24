@@ -210,20 +210,20 @@ tr:hover td{background:var(--surface2);}
         </button>
       </div>
 
-      <!-- Teclado en pantalla — funciona en móvil y escritorio -->
-      <!-- En móvil usamos el teclado táctil (pinKey); en escritorio también funciona el teclado físico via keydown en el documento -->
+
+      <!-- Teclado en pantalla — touch-action:manipulation evita el delay de 300ms en móvil sin necesitar ontouchstart -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto 1rem;">
-        <button class="pin-key" ontouchstart="pinKey('1')" onclick="pinKey('1')">1</button>
-        <button class="pin-key" ontouchstart="pinKey('2')" onclick="pinKey('2')">2</button>
-        <button class="pin-key" ontouchstart="pinKey('3')" onclick="pinKey('3')">3</button>
-        <button class="pin-key" ontouchstart="pinKey('4')" onclick="pinKey('4')">4</button>
-        <button class="pin-key" ontouchstart="pinKey('5')" onclick="pinKey('5')">5</button>
-        <button class="pin-key" ontouchstart="pinKey('6')" onclick="pinKey('6')">6</button>
-        <button class="pin-key" ontouchstart="pinKey('7')" onclick="pinKey('7')">7</button>
-        <button class="pin-key" ontouchstart="pinKey('8')" onclick="pinKey('8')">8</button>
-        <button class="pin-key" ontouchstart="pinKey('9')" onclick="pinKey('9')">9</button>
-        <button class="pin-key pin-key-back" ontouchstart="pinBack()" onclick="pinBack()">⌫</button>
-        <button class="pin-key" ontouchstart="pinKey('0')" onclick="pinKey('0')">0</button>
+        <button class="pin-key" onclick="pinKey('1')">1</button>
+        <button class="pin-key" onclick="pinKey('2')">2</button>
+        <button class="pin-key" onclick="pinKey('3')">3</button>
+        <button class="pin-key" onclick="pinKey('4')">4</button>
+        <button class="pin-key" onclick="pinKey('5')">5</button>
+        <button class="pin-key" onclick="pinKey('6')">6</button>
+        <button class="pin-key" onclick="pinKey('7')">7</button>
+        <button class="pin-key" onclick="pinKey('8')">8</button>
+        <button class="pin-key" onclick="pinKey('9')">9</button>
+        <button class="pin-key pin-key-back" onclick="pinBack()">⌫</button>
+        <button class="pin-key" onclick="pinKey('0')">0</button>
         <div></div>
       </div>
 
@@ -618,12 +618,15 @@ function parseBCIDate(v){
 }
 
 // Extraer info de cuotas desde descripción BCI no-facturada
-// "AUFBAU PLAZA OESTE SAN NC 05-24" → {cuota_actual:5, total_cuotas:24}
+// "AUFBAU PLAZA OESTE SAN NC 05-24" → cuota 5 de 24 → quedan 19
+// "MP *MERCADO LIB SAN CC 06-12"    → cuota 6 de 12 → quedan 6
+// "06 CUOTA" sin total              → se ignora (aparecerá como contado hasta que se facture)
 function extractBCICuotas(desc){
   const m=String(desc).match(/(?:CC|NC|CF|NF)\s+(\d+)-(\d+)/i);
-  if(m)return{cuota_actual:parseInt(m[1]),total_cuotas:parseInt(m[2])};
-  const m2=String(desc).match(/(\d+)\s+CUOTAS?/i);
-  if(m2)return{cuota_actual:parseInt(m2[1]),total_cuotas:null};
+  if(m){
+    const actual=parseInt(m[1]), total=parseInt(m[2]);
+    return{cuota_actual:actual, total_cuotas:total, cuotas_pend:Math.max(1,total-actual)};
+  }
   return null;
 }
 
@@ -680,8 +683,7 @@ function handleXlsx(file,cardId,statusId){
           const descNorm=normalizeBCIDesc(descRaw);
           // Detectar si es cuota
           const cuotaInfo=extractBCICuotas(descRaw);
-          const cuotas_pend=cuotaInfo?Math.max(0,(cuotaInfo.total_cuotas||0)-cuotaInfo.cuota_actual):0;
-          // valor_cuota = el monto de esta fila (es lo que se cobra este mes)
+          const cuotas_pend = cuotaInfo ? cuotaInfo.cuotas_pend : 0;
           const valor_cuota=monto;
           parsed.push({
             fecha,
@@ -1155,6 +1157,8 @@ function saveEdit(cardId,key){
   m.concepto=document.getElementById('edit-concepto').value.trim();
   m.abono=Math.max(0,Number(document.getElementById('edit-abono').value)||0);
   m.divisiones=_divData.filter(d=>d.respId&&Number(d.pct)>0).map(d=>({respId:d.respId,pct:Number(d.pct)}));
+  // Si no hay divisiones asignadas → el admin (Nicolás) asume el 100% por defecto
+  if(!m.divisiones.length) m.divisiones=[{respId:String(ADMIN_ID),pct:100}];
   cancelEdit();
   renderCardTable(cardId);renderCardKPIs(cardId);renderCardCharts(cardId);render();
 }
@@ -1291,6 +1295,10 @@ function cargarCMRIniciales(){
     ["2025-07-07","COMPRA CUOTAS SIN INTERES MP *OSTER",99990,1,8338]
   ];
   mergeCARD(CARDS.cmr,raw.map(r=>({fecha:r[0],descBanco:r[1],monto:r[2],cuotas_pend:r[3],valor_cuota:r[4]})),false);
+  // Asignar Nicolás como responsable por defecto en CMR (igual que BCI)
+  CARDS.cmr.forEach(m=>{
+    if(!m.divisiones.length) m.divisiones=[{respId:String(ADMIN_ID),pct:100}];
+  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1539,6 +1547,8 @@ mergeCARD = function(db,rows,markNew,isBCI){
     saveIfReady(async()=>{
       showSyncing();
       const changed=[...db.values()].filter(m=>m._estado==='new'||m._estado==='upd');
+      // Asignar admin por defecto a entradas nuevas sin división
+      changed.forEach(m=>{ if(!m.divisiones.length) m.divisiones=[{respId:String(ADMIN_ID),pct:100}]; });
       await saveMovimientos(changed);
       showSynced();
     });
