@@ -1454,7 +1454,12 @@ async function saveIngreso(){
 
 // Guardar responsable (upsert)
 async function saveResponsable(r){
-  await sbUpsert('responsables',{id:r.id,nombre:r.nombre,iniciales:r.iniciales,color:r.color,pin:r.pin||'0000'});
+  try {
+    await sbUpsert('responsables',{id:r.id,nombre:r.nombre,iniciales:r.iniciales,color:r.color,pin:r.pin||'0000'});
+  } catch(e) {
+    console.error('saveResponsable error:', JSON.stringify({id:r.id,nombre:r.nombre}), e.message||e);
+    throw e;
+  }
 }
 
 // Eliminar responsable
@@ -1578,9 +1583,14 @@ removeResponsable = function(id){
 // savePIN
 const _savePIN_orig = savePIN;
 savePIN = function(respId){
+  // Capturar el PIN del input ANTES de que _savePIN_orig llame a renderPinManager
+  // (que destruye el DOM y recrea el input vacío)
+  const inp=document.getElementById('newpin-'+respId);
+  const pinVal=inp?inp.value.replace(/\D/g,'').substring(0,4):'';
   _savePIN_orig(respId);
+  // Después de _savePIN_orig, r.pin ya fue actualizado en memoria
   const r = getResp(respId);
-  if(r) saveIfReady(async()=>{ showSyncing(); await saveResponsable(r); showSynced(); });
+  if(r && pinVal.length===4) saveIfReady(async()=>{ showSyncing(); await saveResponsable(r); showSynced(); });
 };
 
 // setIngreso — guarda cuando el usuario presiona "Actualizar ingreso"
@@ -1831,7 +1841,7 @@ function renderPinManager(){
         <tr>
           <td><span class="badge-resp" style="background:${r.color}22;color:${r.color};margin-right:5px;">${r.iniciales}</span>${r.nombre}${r.id===ADMIN_ID?' 👑':''}</td>
           <td style="font-family:monospace;letter-spacing:3px;">${r.pin||'0000'}</td>
-          <td><input type="number" id="newpin-${r.id}" placeholder="0000" maxlength="4" style="width:80px;font-size:13px;padding:5px;text-align:center;"></td>
+          <td><input type="text" inputmode="numeric" id="newpin-${r.id}" placeholder="0000" maxlength="4" style="width:80px;font-size:13px;padding:5px;text-align:center;letter-spacing:3px;"></td>
           <td><button class="btn-sm" style="background:var(--accent);color:#fff;" onclick="savePIN(${r.id})">Guardar</button></td>
         </tr>`).join('')}
       </tbody></table>
@@ -1840,14 +1850,14 @@ function renderPinManager(){
 
 function savePIN(respId){
   const inp=document.getElementById('newpin-'+respId);
-  if(!inp)return;
-  const val=String(inp.value).trim().padStart(4,'0').substring(0,4);
-  if(!/^\d{4}$/.test(val)){alert('El PIN debe ser exactamente 4 dígitos.');return;}
+  if(!inp) return;
+  const val=inp.value.replace(/\D/g,'').substring(0,4);
+  if(val.length!==4){alert('El PIN debe ser exactamente 4 dígitos numéricos.');return;}
   const r=getResp(respId);
-  if(r) r.pin=val;
-  inp.value='';
+  if(!r) return;
+  r.pin=val;
   renderPinManager();
-  alert(`PIN de ${r?.nombre} actualizado a: ${val}`);
+  alert(`PIN de ${r.nombre} actualizado a: ${val}`);
 }
 
 // ── Añadir campo PIN al agregar responsable ──────────────
