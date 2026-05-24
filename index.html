@@ -13,7 +13,7 @@
 :root{
   --bg:#F7F5F0;--surface:#fff;--surface2:#F0EDE6;--border:#E2DDD5;
   --text:#1A1814;--text-muted:#7A756C;
-  --accent:#2D5016;--accent-light:#E8F0DE;--accent-mid:#5A8A30;
+  --accent:#2D5016;--accent-light:#E8F|0DE;--accent-mid:#5A8A30;
   --danger:#C0392B;--danger-light:#FDECEA;
   --warn:#D4850A;--warn-light:#FEF3E2;
   --info:#1A5276;--info-light:#EBF5FB;
@@ -164,29 +164,29 @@ tr:hover td{background:var(--surface2);}
 .pin-dot.filled::after{content:'✱';}
 .pin-dot.error{background:var(--danger-light);border-color:var(--danger);color:var(--danger);}
 .pin-dot.error::after{content:'✱';}
-.pin-key{width:64px;height:56px;font-size:20px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--rsm);background:var(--surface2);color:var(--text);cursor:pointer;transition:all .1s;display:flex;align-items:center;justify-content:center;}
-.pin-key:hover{background:var(--border);}
-.pin-key:active{transform:scale(.92);background:var(--accent-mid);color:#fff;}
+.pin-key{width:100%;height:60px;font-size:22px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:var(--rsm);background:var(--surface2);color:var(--text);cursor:pointer;transition:all .1s;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.pin-key:active,.pin-key:focus{transform:scale(.92);background:var(--accent-mid);color:#fff;outline:none;}
 .pin-key-back{background:transparent;font-size:22px;}
 @media(max-width:900px){.page.active{flex-direction:column;}.sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);}.chart-row{grid-template-columns:1fr;}}
+@media(max-width:400px){.pin-dot{width:34px;height:34px;font-size:22px;}}
 </style>
 </head>
 <body>
 <!-- ══════════════════════════════════════════════
      PANTALLA DE LOGIN
 ══════════════════════════════════════════════ -->
-<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem 2rem;width:340px;box-shadow:var(--shadow);text-align:center;">
-    <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;margin-bottom:.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:2rem;">Identifícate para continuar</div>
+<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem 1.5rem;width:100%;max-width:340px;box-shadow:var(--shadow);text-align:center;">
+    <div style="font-family:'DM Serif Display',serif;font-size:1.6rem;margin-bottom:.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:1.5rem;">Identifícate para continuar</div>
 
     <!-- Paso 1: seleccionar nombre -->
     <div id="loginStep1">
       <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-align:left;margin-bottom:6px;">¿Quién eres?</div>
-      <select id="loginNameSelect" style="width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-bottom:1rem;">
+      <select id="loginNameSelect" style="width:100%;padding:10px 12px;font-size:16px;border:1px solid var(--border);border-radius:var(--rsm);background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;margin-bottom:1rem;">
         <option value="">— Selecciona tu nombre —</option>
       </select>
-      <button onclick="loginConfirmName()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;">Continuar →</button>
+      <button onclick="loginConfirmName()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--rsm);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;">Continuar →</button>
     </div>
 
     <!-- Paso 2: PIN -->
@@ -196,41 +196,35 @@ tr:hover td{background:var(--surface2);}
         <div style="font-size:12px;color:var(--text-muted);">Ingresa tu PIN de 4 dígitos</div>
       </div>
 
-      <!-- Input oculto que recibe el teclado físico -->
-      <input type="password" id="pinRealInput" inputmode="numeric" maxlength="4"
-        style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;"
-        oninput="onPinInput(this.value)" onkeydown="onPinKeydown(event)">
-
-      <!-- Dots + flecha acceder en la misma fila -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1.75rem;">
-        <div id="pinDisplay" onclick="focusPinInput()"
-          style="display:flex;gap:10px;cursor:pointer;padding:6px 4px;">
+      <!-- Dots + flecha en la misma fila -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:1.5rem;">
+        <div style="display:flex;gap:10px;">
           <div class="pin-dot" id="dot0"></div>
           <div class="pin-dot" id="dot1"></div>
           <div class="pin-dot" id="dot2"></div>
           <div class="pin-dot" id="dot3"></div>
         </div>
-        <!-- Flecha Acceder — sólo activa con 4 dígitos -->
         <button id="pinOKBtn" onclick="pinOK()" disabled
           style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:20px;cursor:not-allowed;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           →
         </button>
       </div>
 
-      <!-- Teclado numérico: 4 filas x 3 columnas, cuadrados simétricos -->
-      <div style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(4,56px);gap:8px;justify-content:center;margin-bottom:1.25rem;">
-        <button class="pin-key" onclick="pinKey('1')">1</button>
-        <button class="pin-key" onclick="pinKey('2')">2</button>
-        <button class="pin-key" onclick="pinKey('3')">3</button>
-        <button class="pin-key" onclick="pinKey('4')">4</button>
-        <button class="pin-key" onclick="pinKey('5')">5</button>
-        <button class="pin-key" onclick="pinKey('6')">6</button>
-        <button class="pin-key" onclick="pinKey('7')">7</button>
-        <button class="pin-key" onclick="pinKey('8')">8</button>
-        <button class="pin-key" onclick="pinKey('9')">9</button>
-        <button class="pin-key pin-key-back" onclick="pinBack()">⌫</button>
-        <button class="pin-key" onclick="pinKey('0')">0</button>
-        <div></div><!-- celda vacía para simetría -->
+      <!-- Teclado en pantalla — funciona en móvil y escritorio -->
+      <!-- En móvil usamos el teclado táctil (pinKey); en escritorio también funciona el teclado físico via keydown en el documento -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto 1rem;">
+        <button class="pin-key" ontouchstart="pinKey('1')" onclick="pinKey('1')">1</button>
+        <button class="pin-key" ontouchstart="pinKey('2')" onclick="pinKey('2')">2</button>
+        <button class="pin-key" ontouchstart="pinKey('3')" onclick="pinKey('3')">3</button>
+        <button class="pin-key" ontouchstart="pinKey('4')" onclick="pinKey('4')">4</button>
+        <button class="pin-key" ontouchstart="pinKey('5')" onclick="pinKey('5')">5</button>
+        <button class="pin-key" ontouchstart="pinKey('6')" onclick="pinKey('6')">6</button>
+        <button class="pin-key" ontouchstart="pinKey('7')" onclick="pinKey('7')">7</button>
+        <button class="pin-key" ontouchstart="pinKey('8')" onclick="pinKey('8')">8</button>
+        <button class="pin-key" ontouchstart="pinKey('9')" onclick="pinKey('9')">9</button>
+        <button class="pin-key pin-key-back" ontouchstart="pinBack()" onclick="pinBack()">⌫</button>
+        <button class="pin-key" ontouchstart="pinKey('0')" onclick="pinKey('0')">0</button>
+        <div></div>
       </div>
 
       <div id="pinError" style="color:var(--danger);font-size:12px;min-height:18px;text-align:center;"></div>
@@ -1654,49 +1648,29 @@ function loginSelectUser(respId){
   document.getElementById('loginStep1').style.display='none';
   document.getElementById('loginStep2').style.display='block';
   document.getElementById('pinError').textContent='';
-  syncPinInput();
-  updatePinUI();
-  // Dar foco al input oculto para capturar teclado físico
-  setTimeout(()=>focusPinInput(), 80);
-}
-
-function focusPinInput(){
-  const inp=document.getElementById('pinRealInput');
-  if(inp) inp.focus();
-}
-
-// Sincroniza el input oculto con _pinBuffer
-function syncPinInput(){
-  const inp=document.getElementById('pinRealInput');
-  if(inp) inp.value=_pinBuffer;
-}
-
-// Llamado cuando el usuario escribe en el input oculto (teclado físico)
-function onPinInput(val){
-  _pinBuffer=val.replace(/\D/g,'').substring(0,4);
-  syncPinInput();
   updatePinUI();
 }
 
-// Enter en teclado físico → intentar acceder si hay 4 dígitos
-function onPinKeydown(e){
-  if(e.key==='Enter'&&_pinBuffer.length===4) pinOK();
-}
+// Teclado físico: escucha teclas numéricas y backspace en el documento
+// Solo activo cuando el paso 2 está visible
+document.addEventListener('keydown', function(e){
+  const step2 = document.getElementById('loginStep2');
+  if(!step2 || step2.style.display==='none') return;
+  if(e.key>='0'&&e.key<='9'){ pinKey(e.key); e.preventDefault(); }
+  else if(e.key==='Backspace'){ pinBack(); e.preventDefault(); }
+  else if(e.key==='Enter'){ pinOK(); e.preventDefault(); }
+});
 
 // Teclado en pantalla
 function pinKey(d){
   if(_pinBuffer.length>=4) return;
   _pinBuffer+=d;
-  syncPinInput();
   updatePinUI();
-  focusPinInput();
 }
 
 function pinBack(){
   _pinBuffer=_pinBuffer.slice(0,-1);
-  syncPinInput();
   updatePinUI();
-  focusPinInput();
 }
 
 // Actualiza los 4 asteriscos y el botón flecha →
@@ -1755,17 +1729,14 @@ function pinOK(){
     for(let i=0;i<4;i++) document.getElementById('dot'+i).classList.add('error');
     setTimeout(()=>{
       _pinBuffer='';
-      syncPinInput();
       updatePinUI();
       document.getElementById('pinError').textContent='';
-      focusPinInput();
     }, 1200);
   }
 }
 
 function loginBack(){
   _loginSelectedId=null; _pinBuffer='';
-  syncPinInput();
   updatePinUI();
   document.getElementById('loginStep1').style.display='block';
   document.getElementById('loginStep2').style.display='none';
