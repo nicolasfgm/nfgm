@@ -701,12 +701,13 @@ function mergeCARD(db,rows,markNew=false,isBCI=false,origen='ultimos'){
         monto:Number(r.monto),cuotas_pend:Number(r.cuotas_pend)||0,
         valor_cuota:Number(r.valor_cuota)||Number(r.monto),
         es_cuota:Number(r.cuotas_pend)>0,concepto:'',divisiones:[],abono:0,
+        total_cuotas:Number(r.cuotas_pend)||0,   // total cuotas originales
+        valor_cuota_manual:0,                      // sobreescribe valor_cuota si >0
         _por_confirmar: esPorConfirmar,
         incluir_proyeccion: false, cuotas_estimadas: 1,
-        origen: origen,              // 'ultimos' | 'facturado'
+        origen: origen,
         fecha_cobro: origen==='facturado' ? r.fecha_cobro||String(r.fecha).substring(0,10) : '',
-        _duplicado: false,           // true cuando hay conflicto ultimos vs facturado sin resolver
-        _duplicado_origen: null,     // datos del otro origen para mostrar al usuario
+        _duplicado: false, _duplicado_origen: null, _duplicado_resuelto:false,
         _estado:markNew?'new':'normal'});
       added++;
     } else {
@@ -762,38 +763,47 @@ function divPctTotal(m){
   return (m.divisiones||[]).reduce((s,d)=>s+Number(d.pct),0);
 }
 
+// Calcula si un movimiento debe sumarse en un mes índice (0=mes actual)
+// Usa fecha_cobro como inicio real y total_cuotas como duración
+function movActivo(m, mesIdx){
+  if(m._estado==='done') return false;
+  const vc=m.valor_cuota_manual||m.valor_cuota;
+  if(!vc) return false;
+  if(m._por_confirmar) return m.incluir_proyeccion&&mesIdx<(m.cuotas_estimadas||1);
+
+  if(!m.es_cuota) return mesIdx===0; // contado: solo mes actual
+
+  // Si tiene fecha_cobro, usarla como inicio real
+  if(m.fecha_cobro){
+    const now=new Date();
+    const inicio=new Date(m.fecha_cobro+'-01');
+    // mesIdx relativo a hoy → mes absoluto
+    const mesAbs=now.getFullYear()*12+now.getMonth()+mesIdx;
+    const mesInicioAbs=inicio.getFullYear()*12+inicio.getMonth();
+    const total=m.total_cuotas||m.cuotas_pend;
+    if(!total) return false;
+    return mesAbs>=mesInicioAbs && mesAbs<mesInicioAbs+total;
+  }
+  // Sin fecha_cobro: usar cuotas_pend desde hoy
+  return mesIdx<m.cuotas_pend;
+}
+
 function cardTotalMes(cardId,mesIdx){
   let t=0;
   CARDS[cardId].forEach(m=>{
-    if(m._estado==='done') return;
-    if(m._por_confirmar){
-      // Solo sumar si el usuario marcó "incluir en proyección"
-      if(m.incluir_proyeccion && mesIdx<(m.cuotas_estimadas||1)){
-        t+=Math.max(0,m.valor_cuota-(m.abono||0));
-      }
-    } else if(m.es_cuota && mesIdx<m.cuotas_pend){
-      t+=Math.max(0,m.valor_cuota-(m.abono||0));
-    } else if(!m.es_cuota && mesIdx===0){
-      // contado facturado: solo mes actual
-      t+=Math.max(0,m.valor_cuota-(m.abono||0));
-    }
+    if(movActivo(m,mesIdx)) t+=Math.max(0,(m.valor_cuota_manual||m.valor_cuota)-(m.abono||0));
   });
   return t;
 }
 
-// Total cuota de un responsable en una tarjeta para un mes dado
 function cardRespMes(cardId,respId,mesIdx){
   let t=0;
   CARDS[cardId].forEach(m=>{
-    if(m._estado==='done') return;
+    if(!movActivo(m,mesIdx)) return;
     const d=m.divisiones.find(d=>d.respId==respId);
     if(!d) return;
-    const neto=Math.max(0,m.valor_cuota-(m.abono||0));
-    if(m._por_confirmar){
-      if(m.incluir_proyeccion && mesIdx<(m.cuotas_estimadas||1)) t+=neto*d.pct/100;
-    } else if(m.es_cuota && mesIdx<m.cuotas_pend){
-      t+=neto*d.pct/100;
-    }
+    const neto=Math.max(0,(m.valor_cuota_manual||m.valor_cuota)-(m.abono||0));
+    t+=neto*d.pct/100;
   });
   return t;
 }
@@ -1094,27 +1104,16 @@ function renderCuotas(){
     cur.setMonth(cur.getMonth()+1);
   }
 
-  // Función: cuota de un movimiento para un responsable en un mes (índice relativo a mesInicio)
+  // Función: cuota de un movimiento para un responsable en un mes dado
   const cuotaMov=(m,mesDate)=>{
-    const mesIdx=Math.round((mesDate-now)/2629800000+
-      (now.getMonth()+now.getFullYear()*12-(new Date(now.getFullYear(),now.getMonth(),1)-0)/2629800000));
-    // calcular cuántos meses desde hoy es mesDate
+    const now=new Date();
     const diffMeses=Math.round((mesDate.getFullYear()*12+mesDate.getMonth())
                               -(now.getFullYear()*12+now.getMonth()));
-    if(m._estado==='done') return 0;
-    let cuota_base=0;
-    if(m._por_confirmar){
-      if(m.incluir_proyeccion&&diffMeses<(m.cuotas_estimadas||1)) cuota_base=m.valor_cuota;
-    } else if(m.es_cuota&&diffMeses<m.cuotas_pend&&diffMeses>=0){
-      cuota_base=Math.max(0,m.valor_cuota-(m.abono||0));
-    } else if(!m.es_cuota&&diffMeses===0){
-      cuota_base=Math.max(0,m.valor_cuota-(m.abono||0));
-    }
-    if(!cuota_base) return 0;
-    // Filtrar por responsable
-    if(respSel==='todos') return cuota_base;
+    if(!movActivo(m,diffMeses)) return 0;
+    const vc=Math.max(0,(m.valor_cuota_manual||m.valor_cuota)-(m.abono||0));
+    if(respSel==='todos') return vc;
     const div=m.divisiones.find(d=>d.respId==respSel);
-    return div?cuota_base*div.pct/100:0;
+    return div?vc*div.pct/100:0;
   };
 
   // Construir filas para cada tarjeta
@@ -1819,6 +1818,17 @@ function openEdit(cardId,key){
   const row=document.getElementById(domId);if(!row)return;
   _editCardId=cardId; _editKey=key;
   const jsCard=JSON.stringify(cardId);const jsKey=JSON.stringify(key);
+
+  // Calcular cuotas pagadas hasta hoy (desde fecha_cobro si existe)
+  const cuotasPagadas=()=>{
+    const fc=document.getElementById('edit-fecha-cobro')?.value;
+    if(!fc) return '—';
+    const inicio=new Date(fc+'-01');
+    const hoy=new Date();
+    const meses=Math.max(0,Math.round((hoy.getFullYear()*12+hoy.getMonth())-(inicio.getFullYear()*12+inicio.getMonth())));
+    return meses;
+  };
+
   const editRow=document.createElement('tr');
   editRow.className='edit-row';editRow.id='edit-open-row';
   editRow.innerHTML=`
@@ -1826,12 +1836,40 @@ function openEdit(cardId,key){
       <div class="field-hint">Referencia banco</div>
       <span class="banco-ref" title="${m.descBanco}">${m.descBanco}</span>
       <div style="font-size:9px;font-family:monospace;color:var(--text-muted);margin-top:2px;opacity:.45;">${key}</div>
+      <div style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;">
+        <div class="field-hint" style="margin-bottom:6px;">📋 Datos de la compra</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>
+            <div class="field-hint">Total cuotas originales</div>
+            <input type="number" id="edit-total-cuotas" min="1" value="${m.total_cuotas||m.cuotas_pend||''}"
+              placeholder="Ej: 12" style="width:100%;font-size:12px;padding:5px 7px;"
+              oninput="updateCuotasPreview()">
+          </div>
+          <div>
+            <div class="field-hint">Cuotas pendientes</div>
+            <input type="number" id="edit-cuotas-pend-man" min="0" value="${m.cuotas_pend||''}"
+              placeholder="Auto" style="width:100%;font-size:12px;padding:5px 7px;"
+              oninput="updateCuotasPreview()">
+          </div>
+          <div>
+            <div class="field-hint">Valor cuota/mes (CLP)</div>
+            <input type="number" id="edit-valor-cuota" min="0" value="${m.valor_cuota_manual||m.valor_cuota||''}"
+              placeholder="${fmt(m.valor_cuota)}" style="width:100%;font-size:12px;padding:5px 7px;"
+              oninput="updateCuotasPreview()">
+          </div>
+          <div>
+            <div class="field-hint">Fecha primer cobro</div>
+            <input type="date" id="edit-fecha-cobro" value="${m.fecha_cobro||''}"
+              style="width:100%;font-size:12px;padding:5px 7px;"
+              oninput="updateCuotasPreview()">
+          </div>
+        </div>
+        <div id="cuotasPreview" style="font-size:11px;color:var(--accent-mid);margin-top:6px;padding:4px 6px;background:var(--accent-light);border-radius:4px;min-height:18px;"></div>
+      </div>
     </td>
     <td>
       <div class="field-hint">Concepto (visible para todos)</div>
       <input type="text" id="edit-concepto" placeholder="Ej: Zapatillas de Javier" value="${m.concepto||''}" style="width:100%;">
-      <div class="field-hint" style="margin-top:8px;">Fecha primer cobro efectivo</div>
-      <input type="date" id="edit-fecha-cobro" value="${m.fecha_cobro||''}" style="width:100%;">
     </td>
     <td colspan="6">
       <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;">
@@ -1863,10 +1901,37 @@ function openEdit(cardId,key){
   row.insertAdjacentElement('afterend',editRow);
   buildDivRows(cardId,key,m.divisiones.map(d=>({...d})));
   updateAbonoPreview();
+  updateCuotasPreview();
   document.getElementById('edit-concepto').focus();
 }
 
-// Construye las filas de división en el DOM sin usar innerHTML en cada keystroke.
+function updateCuotasPreview(){
+  const totalEl=document.getElementById('edit-total-cuotas');
+  const pendEl=document.getElementById('edit-cuotas-pend-man');
+  const valorEl=document.getElementById('edit-valor-cuota');
+  const fechaEl=document.getElementById('edit-fecha-cobro');
+  const prev=document.getElementById('cuotasPreview');
+  if(!prev)return;
+  const total=parseInt(totalEl?.value)||0;
+  const pend=parseInt(pendEl?.value)||0;
+  const valor=Number(valorEl?.value)||0;
+  const fecha=fechaEl?.value||'';
+  const parts=[];
+  if(total>0&&pend>0) parts.push(`Pagadas: ${total-pend} de ${total} cuotas`);
+  if(valor>0) parts.push(`${fmt(valor)}/mes`);
+  if(fecha){
+    const inicio=new Date(fecha+'-01');
+    const hoy=new Date();
+    const mesesPagados=Math.max(0,Math.round((hoy.getFullYear()*12+hoy.getMonth())-(inicio.getFullYear()*12+inicio.getMonth())));
+    if(total>0){
+      const fin=new Date(inicio.getFullYear(),inicio.getMonth()+total-1,1);
+      parts.push(`Primer cobro: ${inicio.toLocaleDateString('es-CL',{month:'short',year:'numeric'})} · Último: ${fin.toLocaleDateString('es-CL',{month:'short',year:'numeric'})}`);
+    } else {
+      parts.push(`Primer cobro: ${inicio.toLocaleDateString('es-CL',{month:'short',year:'numeric'})}`);
+    }
+  }
+  prev.textContent=parts.join(' · ')||'Completa los campos para ver el resumen';
+}
 // Cada fila tiene su propio input que escribe directo al array _divData.
 let _divData=[];
 
@@ -1951,6 +2016,13 @@ function saveEdit(cardId,key){
   m.concepto=document.getElementById('edit-concepto').value.trim();
   m.fecha_cobro=document.getElementById('edit-fecha-cobro')?.value||m.fecha_cobro||'';
   m.abono=Math.max(0,Number(document.getElementById('edit-abono').value)||0);
+  // Campos manuales de cuotas
+  const totalCuotasVal=parseInt(document.getElementById('edit-total-cuotas')?.value)||0;
+  const cuotasPendVal=parseInt(document.getElementById('edit-cuotas-pend-man')?.value);
+  const valorCuotaVal=Number(document.getElementById('edit-valor-cuota')?.value)||0;
+  if(totalCuotasVal>0) m.total_cuotas=totalCuotasVal;
+  if(!isNaN(cuotasPendVal)&&cuotasPendVal>=0){ m.cuotas_pend=cuotasPendVal; m.es_cuota=cuotasPendVal>0; }
+  if(valorCuotaVal>0){ m.valor_cuota_manual=valorCuotaVal; m.valor_cuota=valorCuotaVal; }
   m.divisiones=_divData.filter(d=>d.respId&&Number(d.pct)>0).map(d=>({respId:d.respId,pct:Number(d.pct)}));
   // Si no hay divisiones asignadas → el admin (Nicolás) asume el 100% por defecto
   if(!m.divisiones.length) m.divisiones=[{respId:String(ADMIN_ID),pct:100}];
@@ -2245,6 +2317,8 @@ async function loadFromSupabase(){
         _duplicado:m.duplicado||false,
         _duplicado_resuelto:m.duplicado_resuelto||false,
         _duplicado_origen:null,
+        total_cuotas:Number(m.total_cuotas)||0,
+        valor_cuota_manual:Number(m.valor_cuota_manual)||0,
       };
       if(CARDS[m.card_id]) CARDS[m.card_id].set(m.key, entry);
     });
@@ -2306,6 +2380,8 @@ async function saveMovimiento(m){
     origen:m.origen||'ultimos',
     duplicado:m._duplicado||false,
     duplicado_resuelto:m._duplicado_resuelto||false,
+    total_cuotas:m.total_cuotas||0,
+    valor_cuota_manual:m.valor_cuota_manual||0,
     updated_at:new Date().toISOString()
   });
   // Divisiones: borrar las viejas e insertar las nuevas
