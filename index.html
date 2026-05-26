@@ -280,11 +280,18 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
     <div style="font-family:'DM Serif Display',serif;font-size:1.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
     <div style="display:flex;align-items:center;gap:1rem;">
       <span id="respViewName" style="font-size:13px;font-weight:600;"></span>
-      <button onclick="showCuotasFromResp()" style="font-size:12px;color:var(--info);background:var(--info-light);border:1px solid var(--info);border-radius:5px;padding:4px 10px;cursor:pointer;">📅 Ver mis cuotas</button>
       <button onclick="logout()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;cursor:pointer;">Cerrar sesión</button>
     </div>
   </div>
-  <div style="padding:2rem;max-width:900px;margin:0 auto;">
+
+  <!-- Sub-tabs para no-admin -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:.5rem 1.5rem;display:flex;gap:6px;">
+    <button class="resp-subtab active" id="subtab-resumen" onclick="switchRespTab('resumen',this)" style="padding:5px 14px;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--accent);color:#fff;">Mis gastos</button>
+    <button class="resp-subtab" id="subtab-cuotas" onclick="switchRespTab('cuotas',this)" style="padding:5px 14px;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--surface2);color:var(--text-muted);">📅 Mis cuotas</button>
+  </div>
+
+  <!-- Panel: Mis gastos -->
+  <div id="respPanel-resumen" style="padding:2rem;max-width:960px;margin:0 auto;">
     <div id="respViewKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1.5rem;"></div>
     <div class="table-card">
       <div class="table-header">Mis movimientos</div>
@@ -296,6 +303,37 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
         <tbody id="respViewTbody"></tbody></table>
       </div>
     </div>
+  </div>
+
+  <!-- Panel: Mis cuotas (pivot embebido) -->
+  <div id="respPanel-cuotas" style="display:none;padding:1.5rem;">
+    <!-- Filtros simplificados (sin selector de responsable — fijo al usuario) -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;">
+      <div class="form-group" style="margin:0;">
+        <label>Desde (mes)</label>
+        <input type="month" id="cuotasDesde" onchange="renderCuotas()" style="width:140px;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Hasta (mes)</label>
+        <input type="month" id="cuotasHasta" onchange="renderCuotas()" style="width:140px;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Meses</label>
+        <select id="cuotasMeses" onchange="onCuotasMesesChange()" style="width:90px;">
+          <option value="6">6</option>
+          <option value="12" selected>12</option>
+          <option value="18">18</option>
+          <option value="24">24</option>
+        </select>
+      </div>
+    </div>
+    <!-- KPIs y tabla pivot reutilizados -->
+    <div id="cuotasKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:1rem;"></div>
+    <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);">
+      <div id="cuotasPivotWrap"></div>
+    </div>
+    <!-- input oculto para que renderCuotas() lea el responsable -->
+    <select id="cuotasResp" style="display:none;"></select>
   </div>
 </div>
 
@@ -1058,28 +1096,24 @@ const cuotasState={cmrOpen:true, bciOpen:true};
 function initCuotasFilters(){
   const sel=document.getElementById('cuotasResp');
   if(!sel) return;
-  const currentVal=sel.value; // preservar selección actual
+  const currentVal=sel.value;
   if(currentSession&&!currentSession.isAdmin){
-    sel.innerHTML=responsables.filter(r=>r.id===currentSession.respId)
-      .map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
+    // No-admin: fijar al responsable actual en el select oculto
+    sel.innerHTML=`<option value="${currentSession.respId}" selected>${currentSession.respId}</option>`;
     sel.disabled=true;
   } else {
     sel.disabled=false;
+    sel.style.display=''; // asegurarse de que sea visible para admin
     sel.innerHTML='<option value="todos">— Todos —</option>'+
       responsables.map(r=>`<option value="${r.id}">${r.iniciales} · ${r.nombre}</option>`).join('');
-    // restaurar selección previa si sigue siendo válida
-    if(currentVal && [...sel.options].some(o=>o.value===currentVal)){
-      sel.value=currentVal;
-    }
+    if(currentVal&&[...sel.options].some(o=>o.value===currentVal)) sel.value=currentVal;
   }
-  // Rango por defecto solo si están vacíos
   const now=new Date();
   const desdeEl=document.getElementById('cuotasDesde');
   const hastaEl=document.getElementById('cuotasHasta');
   const nEl=document.getElementById('cuotasMeses');
-  if(desdeEl&&!desdeEl.value){
+  if(desdeEl&&!desdeEl.value)
     desdeEl.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  }
   if(hastaEl&&!hastaEl.value){
     const n=parseInt(nEl?.value||12);
     const hasta=new Date(now.getFullYear(),now.getMonth()+n-1,1);
@@ -1586,13 +1620,29 @@ function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-b
 // ══════════════════════════════════════════════════════════
 const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
 
-function showCuotasFromResp(){
-  document.getElementById('respView').style.display='none';
-  document.querySelector('header').style.display='flex';
-  document.querySelectorAll('.page').forEach(p=>p.style.display='');
-  const cuotasBtn=document.getElementById('tab-cuotas');
-  if(cuotasBtn){cuotasBtn.style.display='';showPage('cuotas',cuotasBtn);}
+function switchRespTab(tab, btn){
+  // Cambiar entre "Mis gastos" y "Mis cuotas" dentro de la vista del responsable
+  document.querySelectorAll('.resp-subtab').forEach(b=>{
+    b.style.background='var(--surface2)';
+    b.style.color='var(--text-muted)';
+  });
+  btn.style.background='var(--accent)';
+  btn.style.color='#fff';
+  document.getElementById('respPanel-resumen').style.display=tab==='resumen'?'block':'none';
+  document.getElementById('respPanel-cuotas').style.display=tab==='cuotas'?'block':'none';
+  if(tab==='cuotas'){
+    // Asegurar que el selector oculto tenga el responsable correcto
+    const sel=document.getElementById('cuotasResp');
+    if(sel&&currentSession){
+      sel.innerHTML=`<option value="${currentSession.respId}" selected>${currentSession.respId}</option>`;
+    }
+    initCuotasFilters();
+    renderCuotas();
+  }
 }
+
+// Ya no necesitamos showCuotasFromResp separado — queda como alias por compatibilidad
+function showCuotasFromResp(){ switchRespTab('cuotas', document.getElementById('subtab-cuotas')); }
 
 // ── Resolver duplicado ───────────────────────────────────
 function resolverDup(cardId,key,conservar){
@@ -2714,6 +2764,13 @@ function logout(){
 // ── Vista de responsable ─────────────────────────────────
 function showRespView(r){
   document.getElementById('respView').style.display='block';
+  // Resetear al tab "Mis gastos" al entrar
+  document.getElementById('respPanel-resumen').style.display='block';
+  document.getElementById('respPanel-cuotas').style.display='none';
+  const btnRes=document.getElementById('subtab-resumen');
+  const btnCuo=document.getElementById('subtab-cuotas');
+  if(btnRes){btnRes.style.background='var(--accent)';btnRes.style.color='#fff';}
+  if(btnCuo){btnCuo.style.background='var(--surface2)';btnCuo.style.color='var(--text-muted)';}
   document.getElementById('respViewName').innerHTML=
     `<span style="background:${r.color}22;color:${r.color};padding:3px 10px;border-radius:9px;font-size:12px;">${r.iniciales}</span> ${r.nombre}`;
 
