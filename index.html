@@ -118,6 +118,26 @@ th.sortable .sort-icon{margin-left:4px;opacity:.4;font-size:10px;}
 th.sortable.asc .sort-icon::after{content:'▲';opacity:1;}
 th.sortable.desc .sort-icon::after{content:'▼';opacity:1;}
 th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
+/* Pivot table */
+.pivot-table{width:100%;border-collapse:collapse;font-size:12px;}
+.pivot-table th{background:var(--surface2);padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);text-align:right;white-space:nowrap;position:sticky;top:0;z-index:2;}
+.pivot-table th.col-label{text-align:left;position:sticky;left:0;z-index:3;background:var(--surface2);min-width:220px;max-width:260px;}
+.pivot-table th.col-tarjeta{text-align:left;position:sticky;left:0;z-index:3;background:var(--surface2);min-width:80px;}
+.pivot-table td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text);text-align:right;white-space:nowrap;}
+.pivot-table td.col-label{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pivot-table td.col-label.indent{padding-left:24px;font-size:11px;}
+.pivot-table tr:hover td{background:var(--surface2);}
+.pivot-table tr:hover td.col-label{background:var(--surface2);}
+.pivot-table .row-subtotal td{background:var(--surface2);font-weight:700;border-top:2px solid var(--border);}
+.pivot-table .row-subtotal td.col-label{background:var(--surface2);}
+.pivot-table .row-total td{background:var(--accent-light);font-weight:700;color:var(--accent);border-top:3px solid var(--accent-mid);}
+.pivot-table .row-total td.col-label{background:var(--accent-light);color:var(--accent);}
+.pivot-table .row-section td{background:var(--surface);font-weight:700;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 12px;cursor:pointer;}
+.pivot-table .row-section td.col-label{background:var(--surface);}
+.pivot-table .row-section:hover td{background:var(--surface2);}
+.pivot-cell-zero{color:var(--text-muted);opacity:.35;}
+.pivot-cell-val{color:var(--danger);}
+.section-toggle{margin-right:6px;font-size:11px;}
 .dup-panel{background:var(--surface);border:2px solid var(--danger);border-radius:var(--rsm);padding:12px;margin-top:8px;}
 .dup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
 .dup-col{background:var(--surface2);border-radius:6px;padding:8px 10px;font-size:11px;}
@@ -260,6 +280,7 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
     <div style="font-family:'DM Serif Display',serif;font-size:1.2rem;">Gastos Fijos <span style="color:var(--accent-mid);">NFGM</span></div>
     <div style="display:flex;align-items:center;gap:1rem;">
       <span id="respViewName" style="font-size:13px;font-weight:600;"></span>
+      <button onclick="showCuotasFromResp()" style="font-size:12px;color:var(--info);background:var(--info-light);border:1px solid var(--info);border-radius:5px;padding:4px 10px;cursor:pointer;">📅 Ver mis cuotas</button>
       <button onclick="logout()" style="font-size:12px;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;cursor:pointer;">Cerrar sesión</button>
     </div>
   </div>
@@ -286,6 +307,7 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
       <button class="nav-tab" onclick="showPage('cmr',this)">CMR Falabella</button>
       <button class="nav-tab" onclick="showPage('bci',this)">BCI Visa</button>
       <button class="nav-tab" id="tab-analisis" style="display:none;" onclick="showPage('analisis',this)">📊 Análisis</button>
+      <button class="nav-tab" id="tab-cuotas" style="display:none;" onclick="showPage('cuotas',this)">📅 Cuotas</button>
       <button class="nav-tab" onclick="showPage('responsables',this)">Responsables</button>
     </nav>
     <div class="header-meta" id="headerDate"></div>
@@ -484,6 +506,54 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
       <div class="chart-card"><div class="chart-title">Top 10 por cuota</div><div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;">🟢 con responsable · 🔴 sin responsable</div><div style="position:relative;height:280px;"><canvas id="bciTopChart"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Carga próximos 12 meses</div><div style="position:relative;height:280px;"><canvas id="bciCargaChart"></canvas></div></div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ CUOTAS PIVOT ══════════ -->
+<div class="page" id="page-cuotas">
+  <div style="padding:1.5rem;width:100%;overflow-y:auto;">
+
+    <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:1.5rem;">Vista de Cuotas</h2>
+      <span style="font-size:12px;color:var(--text-muted);">Evolución mensual de compromisos activos</span>
+    </div>
+
+    <!-- FILTROS -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 16px;">
+      <div class="form-group" style="margin:0;">
+        <label>Responsable</label>
+        <select id="cuotasResp" onchange="renderCuotas()" style="min-width:180px;">
+          <option value="todos">Todos</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Desde (mes)</label>
+        <input type="month" id="cuotasDesde" onchange="renderCuotas()" style="width:150px;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Hasta (mes)</label>
+        <input type="month" id="cuotasHasta" onchange="renderCuotas()" style="width:150px;">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Meses a mostrar</label>
+        <select id="cuotasMeses" onchange="renderCuotas()" style="width:100px;">
+          <option value="6">6 meses</option>
+          <option value="12" selected>12 meses</option>
+          <option value="18">18 meses</option>
+          <option value="24">24 meses</option>
+        </select>
+      </div>
+      <button onclick="renderCuotas()" class="btn btn-primary" style="width:auto;padding:7px 16px;font-size:12px;align-self:flex-end;">Actualizar</button>
+    </div>
+
+    <!-- KPIs resumen -->
+    <div id="cuotasKPIs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:1.25rem;"></div>
+
+    <!-- TABLA PIVOT (scroll horizontal) -->
+    <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);">
+      <div id="cuotasPivotWrap"></div>
+    </div>
+
   </div>
 </div>
 
@@ -943,6 +1013,7 @@ function showPage(name,btn){
   if(name==='cmr'||name==='bci'){renderCardPage(name);renderCardKPIs(name);}
   if(name==='responsables')renderRespPage();
   if(name==='analisis')renderAnalisis();
+  if(name==='cuotas')renderCuotas();
 }
 function switchTab(t,btn){
   ['fijo','eventual'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
@@ -954,6 +1025,168 @@ function switchTab(t,btn){
 // PÁGINA ANÁLISIS — solo admin
 // ══════════════════════════════════════════════════════════
 const _anCharts={};
+
+// ══════════════════════════════════════════════════════════
+// VISTA DE CUOTAS — tabla pivote mensual
+// ══════════════════════════════════════════════════════════
+const cuotasState={cmrOpen:true, bciOpen:true};
+
+function initCuotasFilters(){
+  // Selector de responsable
+  const sel=document.getElementById('cuotasResp');
+  if(!sel) return;
+  // Determinar responsable según sesión
+  if(currentSession&&!currentSession.isAdmin){
+    // Responsable: solo ve a sí mismo
+    sel.innerHTML=responsables.filter(r=>r.id===currentSession.respId)
+      .map(r=>`<option value="${r.id}" selected>${r.nombre}</option>`).join('');
+    sel.disabled=true;
+  } else {
+    sel.disabled=false;
+    sel.innerHTML='<option value="todos">Todos</option>'+
+      responsables.map(r=>`<option value="${r.id}">${r.iniciales} · ${r.nombre}</option>`).join('');
+  }
+  // Rango por defecto: mes actual + N meses
+  const now=new Date();
+  const desde=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const n=parseInt(document.getElementById('cuotasMeses')?.value||12);
+  const hasta=new Date(now.getFullYear(),now.getMonth()+n-1,1);
+  const hastaStr=`${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`;
+  if(document.getElementById('cuotasDesde')&&!document.getElementById('cuotasDesde').value)
+    document.getElementById('cuotasDesde').value=desde;
+  if(document.getElementById('cuotasHasta')&&!document.getElementById('cuotasHasta').value)
+    document.getElementById('cuotasHasta').value=hastaStr;
+}
+
+function renderCuotas(){
+  initCuotasFilters();
+  const respSel=document.getElementById('cuotasResp')?.value||'todos';
+  const desdeVal=document.getElementById('cuotasDesde')?.value;
+  const hastaVal=document.getElementById('cuotasHasta')?.value;
+  const now=new Date();
+
+  // Construir array de meses (objetos Date) dentro del rango
+  let mesInicio=desdeVal?new Date(desdeVal+'-01'):now;
+  let mesFin=hastaVal?new Date(hastaVal+'-01'):new Date(now.getFullYear(),now.getMonth()+11,1);
+  if(mesFin<mesInicio) mesFin=new Date(mesInicio.getFullYear(),mesInicio.getMonth()+11,1);
+
+  const meses=[];
+  let cur=new Date(mesInicio);
+  while(cur<=mesFin && meses.length<36){
+    meses.push(new Date(cur));
+    cur.setMonth(cur.getMonth()+1);
+  }
+
+  // Función: cuota de un movimiento para un responsable en un mes (índice relativo a mesInicio)
+  const cuotaMov=(m,mesDate)=>{
+    const mesIdx=Math.round((mesDate-now)/2629800000+
+      (now.getMonth()+now.getFullYear()*12-(new Date(now.getFullYear(),now.getMonth(),1)-0)/2629800000));
+    // calcular cuántos meses desde hoy es mesDate
+    const diffMeses=Math.round((mesDate.getFullYear()*12+mesDate.getMonth())
+                              -(now.getFullYear()*12+now.getMonth()));
+    if(m._estado==='done') return 0;
+    let cuota_base=0;
+    if(m._por_confirmar){
+      if(m.incluir_proyeccion&&diffMeses<(m.cuotas_estimadas||1)) cuota_base=m.valor_cuota;
+    } else if(m.es_cuota&&diffMeses<m.cuotas_pend&&diffMeses>=0){
+      cuota_base=Math.max(0,m.valor_cuota-(m.abono||0));
+    } else if(!m.es_cuota&&diffMeses===0){
+      cuota_base=Math.max(0,m.valor_cuota-(m.abono||0));
+    }
+    if(!cuota_base) return 0;
+    // Filtrar por responsable
+    if(respSel==='todos') return cuota_base;
+    const div=m.divisiones.find(d=>d.respId==respSel);
+    return div?cuota_base*div.pct/100:0;
+  };
+
+  // Construir filas para cada tarjeta
+  const buildRows=(cardId)=>{
+    const movs=[...CARDS[cardId].values()].filter(m=>m._estado!=='done');
+    // Solo movimientos que tienen algún valor en el rango
+    const activos=movs.filter(m=>{
+      if(respSel!=='todos'&&!m.divisiones.find(d=>d.respId==respSel)) return false;
+      return meses.some(mes=>cuotaMov(m,mes)>0);
+    });
+    // Ordenar por concepto
+    activos.sort((a,b)=>(a.concepto||a.descBanco).localeCompare(b.concepto||b.descBanco));
+    return activos;
+  };
+
+  const cmrMovs=buildRows('cmr');
+  const bciMovs=buildRows('bci');
+
+  // KPIs
+  const totalMes0cmr=cmrMovs.reduce((s,m)=>s+cuotaMov(m,meses[0]||now),0);
+  const totalMes0bci=bciMovs.reduce((s,m)=>s+cuotaMov(m,meses[0]||now),0);
+  const totalMes0=totalMes0cmr+totalMes0bci;
+  document.getElementById('cuotasKPIs').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Total cuotas mes actual</div><div class="kpi-value danger">${fmt(totalMes0)}</div><div class="kpi-sub">CMR + BCI</div></div>
+    <div class="kpi-card"><div class="kpi-label">CMR — mes actual</div><div class="kpi-value warning">${fmt(totalMes0cmr)}</div><div class="kpi-sub">${cmrMovs.length} movimientos activos</div></div>
+    <div class="kpi-card"><div class="kpi-label">BCI — mes actual</div><div class="kpi-value warning">${fmt(totalMes0bci)}</div><div class="kpi-sub">${bciMovs.length} movimientos activos</div></div>
+    <div class="kpi-card"><div class="kpi-label">Meses con cuotas activas</div><div class="kpi-value safe">${meses.filter(mes=>cmrMovs.concat(bciMovs).some(m=>cuotaMov(m,mes)>0)).length}</div><div class="kpi-sub">de ${meses.length} mostrados</div></div>`;
+
+  // Construir tabla pivot
+  const mesHeaders=meses.map(m=>`<th style="min-width:90px;text-align:right;">${m.toLocaleDateString('es-CL',{month:'short',year:'2-digit'})}</th>`).join('');
+  const colLabel=(txt,indent=false,extra='')=>
+    `<td class="col-label${indent?' indent':''}" title="${txt}" style="cursor:default;">${extra}${txt}</td>`;
+
+  const buildSection=(movs,cardId,cardLabel,color)=>{
+    const open=cuotasState[cardId+'Open'];
+    const subtotales=meses.map(mes=>movs.reduce((s,m)=>s+cuotaMov(m,mes),0));
+    const movRows=!open?'':movs.map(m=>{
+      const label=(m.concepto||m.descBanco).substring(0,40);
+      const cells=meses.map(mes=>{
+        const v=cuotaMov(m,mes);
+        return v>0?`<td class="pivot-cell-val">${fmt(v)}</td>`:`<td class="pivot-cell-zero">—</td>`;
+      }).join('');
+      return`<tr>
+        ${colLabel(label,true)}
+        ${cells}
+      </tr>`;
+    }).join('');
+
+    const subtotalCells=subtotales.map(v=>v>0?`<td class="td-red">${fmt(v)}</td>`:`<td class="pivot-cell-zero">—</td>`).join('');
+    const toggle=open?'▾':'▸';
+    return`
+      <tr class="row-section" onclick="cuotasState['${cardId}Open']=!cuotasState['${cardId}Open'];renderCuotas();">
+        <td class="col-label" style="color:${color};"><span class="section-toggle">${toggle}</span>${cardLabel}</td>
+        ${meses.map(()=>'<td></td>').join('')}
+      </tr>
+      ${movRows}
+      <tr class="row-subtotal">
+        ${colLabel('Subtotal '+cardLabel)}
+        ${subtotalCells}
+      </tr>`;
+  };
+
+  const cmrSection=buildSection(cmrMovs,'cmr','CMR Falabella','#C0392B');
+  const bciSection=buildSection(bciMovs,'bci','BCI Visa','#1A4E8F');
+
+  // Fila total
+  const totalesMes=meses.map(mes=>
+    cmrMovs.concat(bciMovs).reduce((s,m)=>s+cuotaMov(m,mes),0));
+  const totalCells=totalesMes.map(v=>v>0?`<td>${fmt(v)}</td>`:`<td class="pivot-cell-zero">—</td>`).join('');
+
+  const html=`<table class="pivot-table">
+    <thead>
+      <tr>
+        <th class="col-label">Concepto</th>
+        ${mesHeaders}
+      </tr>
+    </thead>
+    <tbody>
+      ${cmrSection}
+      ${bciSection}
+      <tr class="row-total">
+        <td class="col-label">TOTAL</td>
+        ${totalCells}
+      </tr>
+    </tbody>
+  </table>`;
+
+  document.getElementById('cuotasPivotWrap').innerHTML=html;
+}
 
 function renderAnalisis(){
   renderAnPersonas();
@@ -1297,6 +1530,15 @@ function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-b
 // CARD PAGE (CMR y BCI comparten la misma lógica)
 // ══════════════════════════════════════════════════════════
 const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
+
+function showCuotasFromResp(){
+  // Mostrar la vista cuotas para el responsable actual
+  document.getElementById('respView').style.display='none';
+  document.querySelector('header').style.display='flex';
+  document.querySelectorAll('.page').forEach(p=>p.style.display='');
+  const cuotasBtn=document.getElementById('tab-cuotas');
+  if(cuotasBtn){cuotasBtn.style.display='';showPage('cuotas',cuotasBtn);}
+}
 
 // ── Resolver duplicado ───────────────────────────────────
 function resolverDup(cardId,key,conservar){
@@ -2294,13 +2536,18 @@ function pinOK(){
       // Mostrar pestaña Análisis solo para admin
       const tabAn=document.getElementById('tab-analisis');
       if(tabAn) tabAn.style.display='';
+      // Mostrar pestaña Cuotas para todos
+      const tabCu=document.getElementById('tab-cuotas');
+      if(tabCu) tabCu.style.display='';
       // Activar dashboard (showPage limpia style.display internamente)
       const dashBtn=document.querySelector('.nav-tab');
       if(dashBtn) showPage('dashboard',dashBtn);
     } else {
-      // Responsable: mostrar solo su vista
+      // Responsable: mostrar solo su vista + pestaña cuotas
       document.querySelector('header').style.display='none';
       document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+      const tabCu=document.getElementById('tab-cuotas');
+      if(tabCu) tabCu.style.display='';
       showRespView(r);
     }
   } else {
