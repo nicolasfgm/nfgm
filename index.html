@@ -763,29 +763,43 @@ function divPctTotal(m){
   return (m.divisiones||[]).reduce((s,d)=>s+Number(d.pct),0);
 }
 
-// Calcula si un movimiento debe sumarse en un mes índice (0=mes actual)
-// Usa fecha_cobro como inicio real y total_cuotas como duración
+// Calcula si un movimiento debe sumarse en un mes índice (0=mes actual, negativo=pasado)
+// Regla: primer cobro = fecha_cobro manual ó fecha_compra+1mes (CMR default)
+// Solo meses presentes y futuros (mesIdx >= 0)
+// Duración = total_cuotas (si está seteado) o cuotas_pend desde hoy
 function movActivo(m, mesIdx){
   if(m._estado==='done') return false;
   const vc=m.valor_cuota_manual||m.valor_cuota;
   if(!vc) return false;
-  if(m._por_confirmar) return m.incluir_proyeccion&&mesIdx<(m.cuotas_estimadas||1);
+  if(mesIdx<0) return false; // nunca mostrar meses pasados en proyección
 
+  if(m._por_confirmar) return m.incluir_proyeccion&&mesIdx<(m.cuotas_estimadas||1);
   if(!m.es_cuota) return mesIdx===0; // contado: solo mes actual
 
-  // Si tiene fecha_cobro, usarla como inicio real
+  const now=new Date();
+  const hoyAbs=now.getFullYear()*12+now.getMonth(); // mes absoluto de hoy
+
+  // Determinar mes de inicio del primer cobro (absoluto)
+  let inicioAbs;
   if(m.fecha_cobro){
-    const now=new Date();
-    const inicio=new Date(m.fecha_cobro+'-01');
-    // mesIdx relativo a hoy → mes absoluto
-    const mesAbs=now.getFullYear()*12+now.getMonth()+mesIdx;
-    const mesInicioAbs=inicio.getFullYear()*12+inicio.getMonth();
-    const total=m.total_cuotas||m.cuotas_pend;
-    if(!total) return false;
-    return mesAbs>=mesInicioAbs && mesAbs<mesInicioAbs+total;
+    // Fecha cobro manual: usarla directamente
+    const fc=new Date(m.fecha_cobro+'-01');
+    inicioAbs=fc.getFullYear()*12+fc.getMonth();
+  } else {
+    // Sin fecha cobro: fecha compra + 1 mes (regla CMR/BCI por defecto)
+    const fc=new Date(m.fecha+'-01');
+    inicioAbs=fc.getFullYear()*12+fc.getMonth()+1;
   }
-  // Sin fecha_cobro: usar cuotas_pend desde hoy
-  return mesIdx<m.cuotas_pend;
+
+  // Total cuotas (duración total)
+  const total=m.total_cuotas>0?m.total_cuotas:m.cuotas_pend;
+  if(!total) return false;
+
+  const finAbs=inicioAbs+total-1; // último mes de cobro (absoluto)
+  const mesAbs=hoyAbs+mesIdx;     // mes absoluto que estamos evaluando
+
+  // El mes evaluado debe estar dentro del rango [inicio, fin]
+  return mesAbs>=Math.max(inicioAbs,hoyAbs) && mesAbs<=finAbs;
 }
 
 function cardTotalMes(cardId,mesIdx){
@@ -1106,14 +1120,39 @@ function renderCuotas(){
 
   // Función: cuota de un movimiento para un responsable en un mes dado
   const cuotaMov=(m,mesDate)=>{
-    const now=new Date();
-    const diffMeses=Math.round((mesDate.getFullYear()*12+mesDate.getMonth())
-                              -(now.getFullYear()*12+now.getMonth()));
-    if(!movActivo(m,diffMeses)) return 0;
-    const vc=Math.max(0,(m.valor_cuota_manual||m.valor_cuota)-(m.abono||0));
-    if(respSel==='todos') return vc;
+    if(m._estado==='done') return 0;
+    const vc=m.valor_cuota_manual||m.valor_cuota;
+    if(!vc) return 0;
+    if(m._por_confirmar){
+      const now=new Date();
+      const diff=Math.round((mesDate.getFullYear()*12+mesDate.getMonth())-(now.getFullYear()*12+now.getMonth()));
+      return (m.incluir_proyeccion&&diff>=0&&diff<(m.cuotas_estimadas||1))?vc:0;
+    }
+    if(!m.es_cuota){
+      // contado: mostrar en el mes de la compra o mes actual
+      const now=new Date();
+      const diff=Math.round((mesDate.getFullYear()*12+mesDate.getMonth())-(now.getFullYear()*12+now.getMonth()));
+      return diff===0?vc:0;
+    }
+    // Calcular inicio real
+    let inicioAbs;
+    if(m.fecha_cobro){
+      const fc=new Date(m.fecha_cobro+'-01');
+      inicioAbs=fc.getFullYear()*12+fc.getMonth();
+    } else {
+      const fc=new Date(m.fecha+'-01');
+      inicioAbs=fc.getFullYear()*12+fc.getMonth()+1;
+    }
+    const total=m.total_cuotas>0?m.total_cuotas:m.cuotas_pend;
+    if(!total) return 0;
+    const finAbs=inicioAbs+total-1;
+    const mesAbs=mesDate.getFullYear()*12+mesDate.getMonth();
+    // En el pivot mostramos el rango completo (incluyendo pasado si el usuario lo seleccionó)
+    if(mesAbs<inicioAbs||mesAbs>finAbs) return 0;
+    const result=Math.max(0,vc-(m.abono||0));
+    if(respSel==='todos') return result;
     const div=m.divisiones.find(d=>d.respId==respSel);
-    return div?vc*div.pct/100:0;
+    return div?result*div.pct/100:0;
   };
 
   // Construir filas para cada tarjeta
