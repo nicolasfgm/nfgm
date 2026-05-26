@@ -112,6 +112,12 @@ tr:hover td{background:var(--surface2);}
 .badge-por-confirmar{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--warn-light);color:var(--warn);margin-left:4px;vertical-align:middle;}
 .badge-duplicado{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:#FDECEA;color:#C0392B;margin-left:4px;vertical-align:middle;}
 .badge-facturado{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;background:var(--accent-light);color:var(--accent-mid);margin-left:4px;vertical-align:middle;}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+th.sortable:hover{background:var(--border);}
+th.sortable .sort-icon{margin-left:4px;opacity:.4;font-size:10px;}
+th.sortable.asc .sort-icon::after{content:'▲';opacity:1;}
+th.sortable.desc .sort-icon::after{content:'▼';opacity:1;}
+th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
 .dup-panel{background:var(--surface);border:2px solid var(--danger);border-radius:var(--rsm);padding:12px;margin-top:8px;}
 .dup-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
 .dup-col{background:var(--surface2);border-radius:6px;padding:8px 10px;font-size:11px;}
@@ -406,11 +412,7 @@ tr:hover td{background:var(--surface2);}
     <div class="table-card" style="margin-bottom:1.25rem;">
       <div class="table-header"><span>Movimientos CMR</span><span style="font-size:11px;color:var(--text-muted);" id="cmrMovCount"></span></div>
       <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
-        <table><thead><tr>
-          <th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th>
-          <th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th>
-          <th>Primer cobro</th><th>Origen</th><th></th>
-        </tr></thead>
+        <table><thead id="cmrThead"></thead>
         <tbody id="cmrTbody"></tbody></table>
       </div>
     </div>
@@ -474,11 +476,7 @@ tr:hover td{background:var(--surface2);}
     <div class="table-card" style="margin-bottom:1.25rem;">
       <div class="table-header"><span>Movimientos BCI Visa</span><span style="font-size:11px;color:var(--text-muted);" id="bciMovCount"></span></div>
       <div style="overflow-x:auto;max-height:460px;overflow-y:auto;">
-        <table><thead><tr>
-          <th>Fecha</th><th>Descripción banco</th><th>Concepto real</th><th>Responsables / División</th>
-          <th>Monto total</th><th>Cuotas pend.</th><th>Cuota/mes</th>
-          <th>Primer cobro</th><th>Origen</th><th></th>
-        </tr></thead>
+        <table><thead id="bciThead"></thead>
         <tbody id="bciTbody"></tbody></table>
       </div>
     </div>
@@ -591,6 +589,10 @@ tr:hover td{background:var(--surface2);}
 // ══════════════════════════════════════════════════════════
 let ingreso=1800000, gastos=[], responsables=[], activePeriod=6;
 const cardFilters={cmr:'todos',bci:'todos'};
+const cardSort={
+  cmr:{col:'fecha',dir:'desc'},
+  bci:{col:'fecha',dir:'desc'}
+};
 
 // ── Constantes de administración (deben ir antes que cualquier función que las use) ──
 const ADMIN_ID  = 101;
@@ -1333,6 +1335,51 @@ function setCuotasEstimadas(cardId,key,val){
   saveIfReady(async()=>{ showSyncing(); await saveMovimiento(m); showSynced(); });
 }
 
+function sortCard(cardId, col){
+  const s=cardSort[cardId];
+  if(s.col===col) s.dir=s.dir==='asc'?'desc':'asc';
+  else{ s.col=col; s.dir='asc'; }
+  renderCardTable(cardId);
+}
+
+// Columnas ordenables: [clave, label]
+const CARD_COLS=[
+  ['fecha','Fecha'],['descBanco','Descripción banco'],['concepto','Concepto real'],
+  ['div','Responsables'],['monto','Monto total'],['cuotas_pend','Cuotas pend.'],
+  ['valor_cuota','Cuota/mes'],['fecha_cobro','Primer cobro'],['origen','Origen'],['_acciones','']
+];
+
+function renderCardHeader(cardId){
+  const thead=document.getElementById(cardId+'Thead');
+  if(!thead)return;
+  const s=cardSort[cardId];
+  thead.innerHTML='<tr>'+CARD_COLS.map(([col,label])=>{
+    if(col==='_acciones') return '<th></th>';
+    const dir=s.col===col?s.dir:'';
+    return`<th class="sortable${dir?' '+dir:''}" onclick="sortCard('${cardId}','${col}')">${label}<span class="sort-icon"></span></th>`;
+  }).join('')+'</tr>';
+}
+
+function sortEntries(entries, cardId){
+  const {col,dir}=cardSort[cardId];
+  const mul=dir==='asc'?1:-1;
+  return [...entries].sort((a,b)=>{
+    let va,vb;
+    switch(col){
+      case 'fecha':       va=a.fecha;       vb=b.fecha;       break;
+      case 'descBanco':   va=a.descBanco;   vb=b.descBanco;   break;
+      case 'concepto':    va=a.concepto||'';vb=b.concepto||'';break;
+      case 'monto':       va=a.monto;       vb=b.monto;       return (va-vb)*mul;
+      case 'cuotas_pend': va=a.cuotas_pend; vb=b.cuotas_pend; return (va-vb)*mul;
+      case 'valor_cuota': va=a.valor_cuota; vb=b.valor_cuota; return (va-vb)*mul;
+      case 'fecha_cobro': va=a.fecha_cobro||''; vb=b.fecha_cobro||''; break;
+      case 'origen':      va=a.origen||'';  vb=b.origen||'';  break;
+      default:            va=a.fecha;       vb=b.fecha;
+    }
+    return va<vb?-mul:va>vb?mul:0;
+  });
+}
+
 function filterCard(cardId,f,btn){
   cardFilters[cardId]=f;
   document.querySelectorAll(`#page-${cardId} .filter-btn`).forEach(b=>b.classList.remove('active'));
@@ -1422,11 +1469,14 @@ function renderCardTable(cardId){
   else if(f==='por-confirmar') entries=entries.filter(m=>m._por_confirmar);
   else if(f==='duplicados') entries=entries.filter(m=>m._duplicado&&!m._duplicado_resuelto);
   else if(f==='periodo')    entries=entries.filter(m=>enPeriodoActual(cardId,m.fecha));
-  const ord={new:0,upd:1,normal:2,done:3};
-  entries.sort((a,b)=>ord[a._estado]-ord[b._estado]||b.fecha.localeCompare(a.fecha));
+  // Render sortable header
+  renderCardHeader(cardId);
+
+  // Sort entries
+  const sorted=sortEntries(entries, cardId);
   document.getElementById(cardId+'MovCount').textContent=entries.length+' movimientos';
   const tbody=document.getElementById(cardId+'Tbody');
-  tbody.innerHTML=entries.map(m=>{
+  tbody.innerHTML=sorted.map(m=>{
     const badge=m._estado==='new'?'<span class="badge-new">NUEVO</span>':m._estado==='upd'?'<span class="badge-upd">ACTUALIZ.</span>':m._estado==='done'?'<span class="badge-done">TERMINADO</span>':'';
     const dupBadge=m._duplicado&&!m._duplicado_resuelto?'<span class="badge-duplicado">⚠️ DUP</span>':'';
     const porConf=m._por_confirmar?'<span class="badge-por-confirmar">⏳ Por confirmar</span>':'';
