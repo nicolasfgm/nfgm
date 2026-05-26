@@ -536,7 +536,7 @@ th.sortable:not(.asc):not(.desc) .sort-icon::after{content:'⇅';}
       </div>
       <div class="form-group" style="margin:0;">
         <label>Meses a mostrar</label>
-        <select id="cuotasMeses" onchange="renderCuotas()" style="width:100px;">
+        <select id="cuotasMeses" onchange="onCuotasMesesChange()" style="width:100px;">
           <option value="6">6 meses</option>
           <option value="12" selected>12 meses</option>
           <option value="18">18 meses</option>
@@ -1013,7 +1013,7 @@ function showPage(name,btn){
   if(name==='cmr'||name==='bci'){renderCardPage(name);renderCardKPIs(name);}
   if(name==='responsables')renderRespPage();
   if(name==='analisis')renderAnalisis();
-  if(name==='cuotas')renderCuotas();
+  if(name==='cuotas'){initCuotasFilters();renderCuotas();}
 }
 function switchTab(t,btn){
   ['fijo','eventual'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'block':'none');
@@ -1032,34 +1032,51 @@ const _anCharts={};
 const cuotasState={cmrOpen:true, bciOpen:true};
 
 function initCuotasFilters(){
-  // Selector de responsable
   const sel=document.getElementById('cuotasResp');
   if(!sel) return;
-  // Determinar responsable según sesión
+  const currentVal=sel.value; // preservar selección actual
   if(currentSession&&!currentSession.isAdmin){
-    // Responsable: solo ve a sí mismo
     sel.innerHTML=responsables.filter(r=>r.id===currentSession.respId)
-      .map(r=>`<option value="${r.id}" selected>${r.nombre}</option>`).join('');
+      .map(r=>`<option value="${r.id}">${r.nombre}</option>`).join('');
     sel.disabled=true;
   } else {
     sel.disabled=false;
-    sel.innerHTML='<option value="todos">Todos</option>'+
+    sel.innerHTML='<option value="todos">— Todos —</option>'+
       responsables.map(r=>`<option value="${r.id}">${r.iniciales} · ${r.nombre}</option>`).join('');
+    // restaurar selección previa si sigue siendo válida
+    if(currentVal && [...sel.options].some(o=>o.value===currentVal)){
+      sel.value=currentVal;
+    }
   }
-  // Rango por defecto: mes actual + N meses
+  // Rango por defecto solo si están vacíos
   const now=new Date();
-  const desde=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const n=parseInt(document.getElementById('cuotasMeses')?.value||12);
-  const hasta=new Date(now.getFullYear(),now.getMonth()+n-1,1);
-  const hastaStr=`${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`;
-  if(document.getElementById('cuotasDesde')&&!document.getElementById('cuotasDesde').value)
-    document.getElementById('cuotasDesde').value=desde;
-  if(document.getElementById('cuotasHasta')&&!document.getElementById('cuotasHasta').value)
-    document.getElementById('cuotasHasta').value=hastaStr;
+  const desdeEl=document.getElementById('cuotasDesde');
+  const hastaEl=document.getElementById('cuotasHasta');
+  const nEl=document.getElementById('cuotasMeses');
+  if(desdeEl&&!desdeEl.value){
+    desdeEl.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+  if(hastaEl&&!hastaEl.value){
+    const n=parseInt(nEl?.value||12);
+    const hasta=new Date(now.getFullYear(),now.getMonth()+n-1,1);
+    hastaEl.value=`${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`;
+  }
+}
+
+// Cuando cambia "Meses a mostrar", actualizar el hasta automáticamente
+function onCuotasMesesChange(){
+  const desdeEl=document.getElementById('cuotasDesde');
+  const hastaEl=document.getElementById('cuotasHasta');
+  const nEl=document.getElementById('cuotasMeses');
+  if(!desdeEl||!hastaEl||!nEl) return;
+  const desde=desdeEl.value?new Date(desdeEl.value+'-01'):new Date();
+  const n=parseInt(nEl.value||12);
+  const hasta=new Date(desde.getFullYear(),desde.getMonth()+n-1,1);
+  hastaEl.value=`${hasta.getFullYear()}-${String(hasta.getMonth()+1).padStart(2,'0')}`;
+  renderCuotas();
 }
 
 function renderCuotas(){
-  initCuotasFilters();
   const respSel=document.getElementById('cuotasResp')?.value||'todos';
   const desdeVal=document.getElementById('cuotasDesde')?.value;
   const hastaVal=document.getElementById('cuotasHasta')?.value;
@@ -1532,7 +1549,6 @@ function updatePeriod(n,btn){activePeriod=n;document.querySelectorAll('.period-b
 const cardCharts={cmr:{top:null,carga:null},bci:{top:null,carga:null}};
 
 function showCuotasFromResp(){
-  // Mostrar la vista cuotas para el responsable actual
   document.getElementById('respView').style.display='none';
   document.querySelector('header').style.display='flex';
   document.querySelectorAll('.page').forEach(p=>p.style.display='');
